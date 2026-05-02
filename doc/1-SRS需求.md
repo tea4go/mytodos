@@ -149,7 +149,7 @@ MyTodos 是一个无需自建后端的协作待办应用。所有团队数据以
 - 创建任务字段至少包含：
   - 标题（必填，1-80 字）
   - 详情描述（可选，支持换行，1-256 字）
-  - 状态（必填，默认"待办"）：待办 / 进行中 / 已完成 / 已归档
+  - 状态（必填，默认"待办"）：待办 / 进行中 / 已完成
   - 截止日期时间（必填）
   - 优先级（必填，默认"中"）：低 / 中 / 高
   - 指派人（必填，只支持 1 个成员）
@@ -185,7 +185,7 @@ MyTodos 是一个无需自建后端的协作待办应用。所有团队数据以
 家长视图：
 - 显示所有未删除的任务。
 - 筛选条件：
-  - 按状态筛选：待办 / 进行中 / 已完成 / 已归档
+  - 按状态筛选：待办 / 进行中 / 已完成
   - 按指派人筛选
   - 按截止日期筛选：今天 / 本周 / 逾期 / 无截止
   - 按标签筛选（多选）
@@ -299,7 +299,6 @@ MyTodos 是一个无需自建后端的协作待办应用。所有团队数据以
 
 - `meta.json`：工作区元信息、成员、标签与版本。
 - `todos.json`：任务数据。
-- `activity.json`：活动记录（可按月归档，例如 activity-2026-05.json）。
 
 **DB-REMOTE-001 meta.json**
 
@@ -330,7 +329,7 @@ MyTodos 是一个无需自建后端的协作待办应用。所有团队数据以
 | tasks[].taskId | UUID | 任务唯一标识 |
 | tasks[].title | string | 标题（必填，1-80 字） |
 | tasks[].description | string | 详情描述（可选，1-256 字） |
-| tasks[].status | enum | 状态：todo / in_progress / done / archived |
+| tasks[].status | enum | 状态：todo / in_progress / done |
 | tasks[].priority | enum | 优先级：low / medium / high |
 | tasks[].dueAt | datetime | 截止日期时间（必填） |
 | tasks[].assigneeId | UUID | 指派人 memberId（只支持 1 个） |
@@ -344,23 +343,6 @@ MyTodos 是一个无需自建后端的协作待办应用。所有团队数据以
 | tasks[].completedBy | UUID | 完成人 memberId（可空） |
 | tasks[].deletedAt | datetime | 删除时间（可空，逻辑删除标记） |
 | tasks[].deletedBy | UUID | 删除人 memberId（可空） |
-
-**DB-REMOTE-003 activity.json**
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| activities[] | array | 活动记录列表 |
-| activities[].activityId | UUID | 活动唯一标识 |
-| activities[].taskId | UUID | 关联任务 ID（可空：工作区级事件） |
-| activities[].type | enum | 活动类型：created / updated / completed / deleted / recovered |
-| activities[].payload | string | 变更摘要（JSON） |
-| activities[].actorId | UUID | 操作人 memberId |
-| activities[].createdAt | datetime | 活动时间 |
-
-**DB-REMOTE-004 数据大小与归档**
-
-- 当 activity 文件超过阈值（例如 512KB）时按月份切分。
-- 已归档任务可迁移到 archive-YYYY.json（可选），减少主文件体积。
 
 ### 6.3 数据一致性与并发控制
 
