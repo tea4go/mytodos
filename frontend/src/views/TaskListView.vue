@@ -1,6 +1,6 @@
 <template>
   <div class="task-list-page">
-    <TopBar title="任务" :is-online="ui.isOnline" />
+    <TopBar title="任务" :is-online="ui.isOnline" :show-logout="auth.role === 'student'" @logout="onLogout" />
     <SearchBar v-model="taskStore.searchKeyword" />
     <FilterBar v-if="auth.role" :role="auth.role" :filter="taskStore.filter" @update:filter="updateFilter" />
     <div class="list">
@@ -108,6 +108,11 @@ async function handleCreate(task: Task) {
   await appendTask(wsStore.currentGistId, task)
   showCreate.value = false
   newTask.value = emptyTask()
+}
+
+async function onLogout() {
+  await auth.logout()
+  router.replace('/guide')
 }
 </script>
 
