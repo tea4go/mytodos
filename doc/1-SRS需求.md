@@ -322,9 +322,21 @@ MyTodos 是一个无需自建后端的协作待办应用。所有团队数据以
   "tags": [                                   // array，标签列表（上限 20 个）
     {
       "tagId": "uuid",                       // UUID，标签唯一标识
-      "name": "学习",                         // string，标签名称（1-20 字）
-      "color": "#FF6B6B",                    // string，标签颜色（hex，可选）
+      "name": "初中",                         // string，标签名称（1-20 字）
+      "color": "#4A90D9",                    // string，标签颜色（hex，可选）
       "createdAt": "2026-05-02T10:00:00Z"   // datetime，创建时间
+    },
+    {
+      "tagId": "uuid",
+      "name": "小学",
+      "color": "#7ED321",
+      "createdAt": "2026-05-02T10:00:00Z"
+    },
+    {
+      "tagId": "uuid",
+      "name": "英语",
+      "color": "#F5A623",
+      "createdAt": "2026-05-02T10:00:00Z"
     }
   ],
   "revision": {
