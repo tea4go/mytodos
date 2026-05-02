@@ -4,9 +4,9 @@
   "version": "0.1.0",
   "identifier": "com.mytodos.app",
   "build": {
-    "frontendDist": "../../dist",
+    "frontendDist": "../../frontend/dist",
     "devUrl": "http://localhost:1420",
-    "beforeDevCommand": "pnpm dev",
+    "beforeDevCommand": "pnpm start",
     "beforeBuildCommand": "pnpm build"
   },
   "app": {
