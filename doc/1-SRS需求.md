@@ -326,18 +326,22 @@ MyTodos 是一个无需自建后端的协作待办应用。所有团队数据以
       "color": "#4A90D9",                    // string，标签颜色（hex，可选）
       "createdAt": "2026-05-02T10:00:00Z"   // datetime，创建时间
     },
-    {
-      "tagId": "uuid",
-      "name": "小学",
-      "color": "#7ED321",
-      "createdAt": "2026-05-02T10:00:00Z"
-    },
-    {
-      "tagId": "uuid",
-      "name": "英语",
-      "color": "#F5A623",
-      "createdAt": "2026-05-02T10:00:00Z"
-    }
+    { "tagId": "uuid", "name": "小学",         "color": "#7ED321", "createdAt": "2026-05-02T10:00:00Z" },
+    { "tagId": "uuid", "name": "语文",         "color": "#F5A623", "createdAt": "2026-05-02T10:00:00Z" },
+    { "tagId": "uuid", "name": "数学",         "color": "#D0021B", "createdAt": "2026-05-02T10:00:00Z" },
+    { "tagId": "uuid", "name": "英语",         "color": "#8B572A", "createdAt": "2026-05-02T10:00:00Z" },
+    { "tagId": "uuid", "name": "物理",         "color": "#417505", "createdAt": "2026-05-02T10:00:00Z" },
+    { "tagId": "uuid", "name": "化学",         "color": "#BD10E0", "createdAt": "2026-05-02T10:00:00Z" },
+    { "tagId": "uuid", "name": "生物",         "color": "#50E3C2", "createdAt": "2026-05-02T10:00:00Z" },
+    { "tagId": "uuid", "name": "历史",         "color": "#B8E986", "createdAt": "2026-05-02T10:00:00Z" },
+    { "tagId": "uuid", "name": "地理",         "color": "#9B9B9B", "createdAt": "2026-05-02T10:00:00Z" },
+    { "tagId": "uuid", "name": "科学",         "color": "#F8E71C", "createdAt": "2026-05-02T10:00:00Z" },
+    { "tagId": "uuid", "name": "道德与法治",    "color": "#FF6900", "createdAt": "2026-05-02T10:00:00Z" },
+    { "tagId": "uuid", "name": "体育",         "color": "#5AC8FA", "createdAt": "2026-05-02T10:00:00Z" },
+    { "tagId": "uuid", "name": "音乐",         "color": "#FF2D55", "createdAt": "2026-05-02T10:00:00Z" },
+    { "tagId": "uuid", "name": "美术",         "color": "#5856D6", "createdAt": "2026-05-02T10:00:00Z" },
+    { "tagId": "uuid", "name": "信息技术",      "color": "#007AFF", "createdAt": "2026-05-02T10:00:00Z" },
+    { "tagId": "uuid", "name": "劳动",         "color": "#34C759", "createdAt": "2026-05-02T10:00:00Z" }
   ],
   "revision": {
     "remoteRevision": "abc123..."            // string，远端版本指纹（用于冲突检测）
