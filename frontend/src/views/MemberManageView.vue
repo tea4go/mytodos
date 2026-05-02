@@ -1,6 +1,6 @@
 <template>
   <div class="member-manage-page">
-    <TopBar title="成员管理" :show-back="true" :is-online="ui.isOnline" />
+    <TopBar title="成员管理" :show-back="true" :is-online="ui.isOnline" :back-to="`/workspaces/${$route.params.id}/admin`" />
     <div class="content">
       <MemberList :members="wsStore.members" @edit="onEdit" @remove="onRemove" />
     </div>

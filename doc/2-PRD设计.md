@@ -56,33 +56,42 @@
 
 | 路径 | 页面 | 组件 | 角色 |
 |------|------|------|------|
-| `/guide` | UI-001 引导页 | GuideView | 无（首次进入） |
-| `/workspaces` | UI-002 工作区列表 | WorkspaceListView | 所有角色 |
+| `/guide` | UI-001 引导页 | GuideView | 无（仅本地无工作区时显示） |
+| `/workspaces` | UI-002 工作区列表 | WorkspaceListView | 所有角色（含未登录） |
+| `/workspaces/:id/login` | UI-002a 工作区登录页 | WorkspaceLoginView | 无（允许未登录访问） |
 | `/workspaces/:id/tasks` | UI-101 任务列表 | TaskListView | 家长、学生 |
 | `/workspaces/:id/tasks/:taskId` | UI-102 任务详情 | TaskDetailView | 所有角色 |
 | `/workspaces/:id/tags` | UI-103 标签管理 | TagManageView | 仅管理员 |
 | `/workspaces/:id/members` | 成员管理 | MemberManageView | 仅管理员 |
-| `/workspaces/:id/settings` | 工作区设置 | WorkspaceSettingsView | 仅管理员 |
+| `/workspaces/:id/settings` | UI-104 工作区设置 | WorkspaceSettingsView | 仅管理员 |
+| `/workspaces/:id/admin` | UI-200 管理员主页 | AdminHomeView | 仅管理员 |
 
 ### 3.2 路由守卫
 
 ```
 Router.beforeEach(to, from, next):
-  1. 检查本地安全存储是否有 currentMemberId（身份凭证）
-     - 无 → 跳转 /guide
-  2. 从已加载工作区的 meta 中查到该 member，得到 role
-  3. 检查 to.meta.roles 是否包含当前 role
-     - 否 → 跳转角色默认页
-  4. 通过
+  1. 尝试从安全存储恢复 session（currentMemberId + role + password + currentWorkspaceId）
+  2. 未登录访问受限路由：
+     - 允许：/guide、/workspaces、/workspaces/:id/login
+     - 其他 → 跳 /workspaces（若本地有工作区）或 /guide
+  3. 已登录访问 /guide → 跳到角色默认页
+  4. 检查 to.meta.roles 是否包含当前 role；不匹配 → 跳角色默认页
 ```
 
 ### 3.3 角色默认页
 
-| 角色 | 首次进入 | 已选工作区 |
-|------|----------|-----------|
-| admin | `/workspaces` | `/workspaces` |
-| parent | `/workspaces` | `/workspaces/:id/tasks` |
-| student | `/workspaces` | `/workspaces/:id/tasks` |
+| 角色 | 已选工作区 | 备注 |
+|------|-----------|------|
+| 未登录 | - | `/workspaces`（多工作区可选）；本地为空时回 `/guide` |
+| admin | `/workspaces/:id/admin` | 管理员登录后默认进入管理员主页（UI-200），含成员/标签/工作区设置三个入口 |
+| parent | `/workspaces/:id/tasks` | |
+| student | `/workspaces/:id/tasks` | |
+
+### 3.4 退出登录跳转
+
+- 当前工作区存在 → `/workspaces/:id/login`（保留工作区上下文，便于切换成员）。
+- 无当前工作区但本地有工作区列表 → `/workspaces`。
+- 本地无任何工作区 → `/guide`。
 
 ---
 
@@ -114,13 +123,25 @@ interface AuthState {
 
 ```typescript
 interface WorkspaceState {
-  workspaces: WorkspaceMeta[]      // 已加入的工作区列表
-  currentWorkspaceId: string | null // 当前工作区
-  currentGistId: string | null      // 当前 gistId
-  meta: WorkspaceMeta | null        // 当前 meta.json 缓存（仅当前会话）
-  members: Member[]                 // 成员列表
-  tags: Tag[]                       // 标签列表
-  remoteRevision: string | null     // 当前远端 revision
+  global: GlobalConfig | null          // 全局配置 gist 内容（含所有工作区配置）
+  currentWorkspaceId: string | null    // 当前工作区
+  currentTodosGistId: string | null    // 当前工作区的任务 gistId
+}
+
+interface GlobalConfig {
+  schemaVersion: 2
+  workspaces: WorkspaceConfig[]        // 工作区配置列表（含成员、标签）
+}
+
+interface WorkspaceConfig {
+  workspaceId: string
+  name: string
+  description: string
+  todosGistId: string
+  createdAt: string
+  updatedAt: string
+  members: Member[]
+  tags: Tag[]
 }
 ```
 
@@ -322,15 +343,15 @@ function filterByDueDate(tasks: Task[], filter: DueDateFilter): Task[] {
 
 ```
 App.vue
-├── GuideView.vue                    // UI-001（创建/加入工作区两条路径）
-│   ├── CreateWorkspaceDialog.vue    // 含管理员显示名 + 6 位密码
-│   ├── JoinWorkspaceDialog.vue      // 输入 gistId
-│   ├── MemberPicker.vue             // 加载 meta 后选择对应成员
-│   └── PasswordInput.vue            // 输入该成员 6 位密码
-├── WorkspaceListView.vue            // UI-002
-│   ├── WorkspaceCard.vue            // (管理员) 编辑/删除入口
-│   ├── WorkspaceJoinItem.vue        // (家长/学生) 加入入口
-│   └── CreateWorkspaceDialog.vue
+├── GuideView.vue                    // UI-001（仅"创建工作区"入口）
+│   └── CreateWorkspaceDialog.vue    // 含管理员显示名 + 6 位密码
+├── WorkspaceListView.vue            // UI-002 工作区列表（来源：全局配置 gist）
+│   ├── WorkspaceCard.vue
+│   └── CreateWorkspaceDialog.vue    // 已登录管理员可继续创建
+├── WorkspaceLoginView.vue           // UI-002a 工作区登录页（首页）
+│   ├── MemberPicker.vue             // 仅列 parent/student 的成员卡片
+│   ├── PasswordInput.vue            // 6 位口令输入
+│   └── AdminLoginDialog.vue         // 右上角管理员入口（输入 admin 成员密码）
 ├── TaskListView.vue                 // UI-101
 │   ├── TopBar.vue                   // 工作区名称 + 网络状态
 │   ├── SearchBar.vue
@@ -349,9 +370,11 @@ App.vue
 ├── TagManageView.vue                // UI-103
 │   ├── TagList.vue
 │   └── TagEditDialog.vue
-└── MemberManageView.vue
-    ├── MemberList.vue
-    └── MemberEditDialog.vue
+├── MemberManageView.vue
+│   ├── MemberList.vue
+│   └── MemberEditDialog.vue
+├── WorkspaceSettingsView.vue        // UI-104 工作区设置（编辑名称/描述、查看 gistId）
+└── AdminHomeView.vue                // UI-200 管理员主页（成员/标签/工作区设置三入口）
 ```
 
 ---
@@ -441,6 +464,7 @@ mytodos/
 │   ├── views/
 │   │   ├── GuideView.vue
 │   │   ├── WorkspaceListView.vue
+│   │   ├── WorkspaceLoginView.vue
 │   │   ├── TaskListView.vue
 │   │   ├── TaskDetailView.vue
 │   │   ├── TagManageView.vue
@@ -462,7 +486,8 @@ mytodos/
 │   │   │   └── AddTaskButton.vue
 │   │   ├── workspace/
 │   │   │   ├── WorkspaceCard.vue
-│   │   │   └── CreateWorkspaceDialog.vue
+│   │   │   ├── CreateWorkspaceDialog.vue
+│   │   │   └── AdminLoginDialog.vue
 │   │   ├── tag/
 │   │   │   ├── TagList.vue
 │   │   │   └── TagEditDialog.vue

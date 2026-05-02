@@ -3,7 +3,7 @@
     <div class="dialog">
       <h3>{{ member ? '编辑成员' : '新增成员' }}</h3>
       <label>名称 <input v-model="displayName" maxlength="40" /></label>
-      <label>角色
+      <label v-if="!member">角色
         <select v-model="role">
           <option value="parent">家长</option>
           <option value="student">学生</option>
@@ -37,7 +37,7 @@ const error = ref('')
 
 watch(() => props.member, m => {
   if (m) { displayName.value = m.displayName; role.value = m.role; password.value = '' }
-  else { displayName.value = ''; role.value = 'student'; password.value = '' }
+  else { displayName.value = ''; role.value = 'student'; password.value = '123456' }
   error.value = ''
 }, { immediate: true })
 

@@ -1,12 +1,25 @@
 <template>
   <div class="top-bar">
-    <button v-if="showBack" @click="$router.back()" class="back-btn">←</button>
+    <button v-if="showBack" @click="onBack" class="back-btn">←</button>
     <span class="title">{{ title }}</span>
     <span :class="['status-dot', isOnline ? 'online' : 'offline']" />
   </div>
 </template>
 <script setup lang="ts">
-defineProps<{ title: string; showBack?: boolean; isOnline: boolean }>()
+import { useRouter } from 'vue-router'
+const props = defineProps<{ title: string; showBack?: boolean; isOnline: boolean; backTo?: string }>()
+const emit = defineEmits<{ back: [] }>()
+const router = useRouter()
+function onBack() {
+  emit('back')
+  if (props.backTo) {
+    router.replace(props.backTo)
+  } else if (window.history.length > 1) {
+    router.back()
+  } else {
+    router.replace('/workspaces')
+  }
+}
 </script>
 <style scoped>
 .top-bar { display: flex; align-items: center; padding: 12px 16px; background: #fff; border-bottom: 1px solid #eee; }

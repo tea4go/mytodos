@@ -41,7 +41,25 @@ export interface Task {
   deletedBy: string | null
 }
 
-// ===== 工作区元数据 =====
+// ===== 工作区配置（全局 gist 中的单个工作区项） =====
+export interface WorkspaceConfig {
+  workspaceId: string
+  name: string
+  description: string
+  todosGistId: string
+  createdAt: string
+  updatedAt: string
+  members: Member[]
+  tags: Tag[]
+}
+
+// ===== 全局配置（GLOBAL_GIST 中的 global.json） =====
+export interface GlobalConfig {
+  schemaVersion: number
+  workspaces: WorkspaceConfig[]
+}
+
+// ===== 工作区元数据（兼容旧 schema，已弃用，保留类型避免编译错误） =====
 export interface WorkspaceMeta {
   schemaVersion: number
   workspace: {

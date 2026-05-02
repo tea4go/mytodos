@@ -1,6 +1,7 @@
-import { createGist, serializeMeta, serializeTasks } from './api'
+import { createGist, serializeTasks } from './api'
+import { fetchGlobalConfig, saveGlobalConfig } from './global'
 import { useWorkspaceStore } from '../stores/workspace'
-import type { Member, Tag, WorkspaceMeta } from '../types'
+import type { Member, Tag, WorkspaceConfig, WorkspaceMeta } from '../types'
 
 const DEFAULT_TAGS: Omit<Tag, 'createdAt'>[] = [
   { tagId: 'tag_chinese', name: '语文', color: '#E74C3C' },
@@ -12,7 +13,6 @@ const DEFAULT_TAGS: Omit<Tag, 'createdAt'>[] = [
   { tagId: 'tag_history', name: '历史', color: '#8B4513' },
   { tagId: 'tag_geography', name: '地理', color: '#2C8C99' },
   { tagId: 'tag_politics', name: '政治', color: '#C0392B' },
-  { tagId: 'tag_pe', name: '体育', color: '#E67E22' },
   { tagId: 'tag_other', name: '其他', color: '#7F8C8D' },
 ]
 
@@ -30,7 +30,12 @@ export interface CreateWorkspaceResult {
   meta: WorkspaceMeta
 }
 
-/** 创建工作区：远端建 gist + 本地登记。返回管理员成员信息供调用方完成登录。 */
+/**
+ * 创建工作区：
+ * 1) 新建一个 todos gist（仅 todos.json）
+ * 2) 拉取全局配置 gist，向 workspaces 数组追加新工作区
+ * 3) 写回全局配置 gist
+ */
 export async function createWorkspace(input: CreateWorkspaceInput): Promise<CreateWorkspaceResult> {
   const wsStore = useWorkspaceStore()
   const now = new Date().toISOString()
@@ -41,23 +46,34 @@ export async function createWorkspace(input: CreateWorkspaceInput): Promise<Crea
     role: 'admin',
     password: input.adminPassword,
   }
-  const meta: WorkspaceMeta = {
-    schemaVersion: 1,
-    workspace: {
-      workspaceId,
-      name: input.name,
-      description: input.description,
-      createdAt: now,
-      updatedAt: now,
-    },
-    members: [adminMember],
-    tags: DEFAULT_TAGS.map(t => ({ ...t, createdAt: now })),
-    revision: { remoteRevision: '1' },
-  }
-  const gist = await createGist(`MyTodos: ${input.name}`, {
-    'meta.json': serializeMeta(meta),
+  // 1) 新建 todos gist
+  const todosGist = await createGist(`MyTodos: ${input.name}`, {
     'todos.json': serializeTasks([]),
   })
-  wsStore.addWorkspace({ workspaceId, gistId: gist.id, name: input.name })
-  return { workspaceId, gistId: gist.id, adminMember, meta }
+  // 2) 拉取全局配置（首次部署时可能为空 schema）
+  const globalCfg = await fetchGlobalConfig()
+  const cfg: WorkspaceConfig = {
+    workspaceId,
+    name: input.name,
+    description: input.description,
+    todosGistId: todosGist.id,
+    createdAt: now,
+    updatedAt: now,
+    members: [adminMember],
+    tags: DEFAULT_TAGS.map(t => ({ ...t, createdAt: now })),
+  }
+  globalCfg.workspaces.push(cfg)
+  // 3) 写回全局
+  await saveGlobalConfig(globalCfg)
+  // 同步 store
+  wsStore.setGlobal(globalCfg)
+
+  const meta: WorkspaceMeta = {
+    schemaVersion: 2,
+    workspace: { workspaceId, name: cfg.name, description: cfg.description, createdAt: now, updatedAt: now },
+    members: cfg.members,
+    tags: cfg.tags,
+    revision: { remoteRevision: '' },
+  }
+  return { workspaceId, gistId: todosGist.id, adminMember, meta }
 }

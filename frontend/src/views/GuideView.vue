@@ -8,22 +8,12 @@
         <span class="label">创建工作区</span>
         <span class="desc">作为管理员发起一个新的团队空间</span>
       </button>
-      <button class="entry-btn" @click="showJoin = true">
-        <span class="icon">🤝</span>
-        <span class="label">加入工作区</span>
-        <span class="desc">使用 gistId 加入家庭/团队</span>
-      </button>
     </div>
 
     <CreateWorkspaceDialog
       :visible="showCreate"
       @close="showCreate = false"
       @create="handleCreate"
-    />
-    <JoinWorkspaceDialog
-      :visible="showJoin"
-      @close="showJoin = false"
-      @joined="handleJoined"
     />
     <LoadingSpinner :visible="ui.loading" :text="loadingText" />
     <ErrorToast :message="ui.error" @close="ui.clearError()" />
@@ -36,18 +26,14 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useUiStore } from '../stores/ui'
 import CreateWorkspaceDialog from '../components/workspace/CreateWorkspaceDialog.vue'
-import JoinWorkspaceDialog from '../components/guide/JoinWorkspaceDialog.vue'
 import LoadingSpinner from '../components/common/LoadingSpinner.vue'
 import ErrorToast from '../components/common/ErrorToast.vue'
 import { createWorkspace } from '../services/workspace'
-import { loadWorkspace } from '../services/sync'
-import type { Member, WorkspaceMeta } from '../types'
 
 const auth = useAuthStore()
 const ui = useUiStore()
 const router = useRouter()
 const showCreate = ref(false)
-const showJoin = ref(false)
 const loadingText = ref('处理中...')
 
 async function handleCreate(data: { name: string; description: string; adminName: string; adminPassword: string }) {
@@ -62,37 +48,9 @@ async function handleCreate(data: { name: string; description: string; adminName
       password: data.adminPassword,
     })
     showCreate.value = false
-    router.replace('/workspaces')
+    router.replace(`/workspaces/${result.workspaceId}/admin`)
   } catch (e: any) {
     ui.setError(`创建失败: ${e}`)
-  } finally {
-    ui.setLoading(false)
-  }
-}
-
-async function handleJoined(data: { workspaceId: string; gistId: string; member: Member; password: string; meta: WorkspaceMeta }) {
-  ui.setLoading(true)
-  loadingText.value = '加入工作区...'
-  try {
-    await auth.login({
-      workspaceId: data.workspaceId,
-      gistId: data.gistId,
-      member: data.member,
-      password: data.password,
-    })
-    // 同步本地工作区列表
-    const { useWorkspaceStore } = await import('../stores/workspace')
-    const wsStore = useWorkspaceStore()
-    wsStore.addWorkspace({ workspaceId: data.workspaceId, gistId: data.gistId, name: data.meta.workspace.name })
-    await loadWorkspace(data.gistId)
-    showJoin.value = false
-    if (data.member.role === 'admin') {
-      router.replace('/workspaces')
-    } else {
-      router.replace(`/workspaces/${data.workspaceId}/tasks`)
-    }
-  } catch (e: any) {
-    ui.setError(`加入失败: ${e}`)
   } finally {
     ui.setLoading(false)
   }

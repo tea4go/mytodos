@@ -81,23 +81,24 @@ async function handleCreate(data: { name: string; description: string; adminName
 async function handleSelect(workspaceId: string) {
   const ws = wsStore.workspaces.find(w => w.workspaceId === workspaceId)
   if (!ws) return
-  if (ws.workspaceId !== wsStore.currentWorkspaceId) {
-    ui.setError('当前未登录此工作区，请退出后重新加入')
+  // 已登录该工作区且为管理员：直接进入成员管理；普通成员：进入任务列表
+  if (auth.isLoggedIn && wsStore.currentWorkspaceId === ws.workspaceId) {
+    if (auth.role === 'admin') {
+      router.push(`/workspaces/${workspaceId}/admin`)
+    } else {
+      router.push(`/workspaces/${workspaceId}/tasks`)
+    }
     return
   }
-  try {
-    if (!wsStore.meta) await loadWorkspace(ws.gistId)
-  } catch { return }
-  if (auth.role === 'admin') {
-    router.push(`/workspaces/${workspaceId}/members`)
-  } else {
-    router.push(`/workspaces/${workspaceId}/tasks`)
-  }
+  // 否则前往该工作区登录页
+  router.push(`/workspaces/${workspaceId}/login`)
 }
 
 async function logout() {
+  const targetWsId = wsStore.currentWorkspaceId
   await auth.logout()
-  router.replace('/guide')
+  if (targetWsId) router.replace(`/workspaces/${targetWsId}/login`)
+  else router.replace('/workspaces')
 }
 </script>
 

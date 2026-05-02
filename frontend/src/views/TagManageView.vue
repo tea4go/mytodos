@@ -1,6 +1,6 @@
 <template>
   <div class="tag-manage-page">
-    <TopBar title="标签管理" :show-back="true" :is-online="ui.isOnline" />
+    <TopBar title="标签管理" :show-back="true" :is-online="ui.isOnline" :back-to="`/workspaces/${$route.params.id}/admin`" />
     <div class="content">
       <TagList :tags="wsStore.tags" @edit="onEdit" @delete="onDelete" />
     </div>

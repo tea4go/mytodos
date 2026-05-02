@@ -35,6 +35,13 @@ function submit() { emit('save', { name: name.value.trim(), color: color.value }
 .dialog { background: #fff; border-radius: 16px; padding: 24px; width: 90%; max-width: 360px; }
 .dialog label { display: block; margin: 12px 0 4px; font-size: 14px; }
 .dialog input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 15px; box-sizing: border-box; }
+.dialog input[type="color"] {
+  width: 100%; height: 44px; padding: 2px;
+  border: 1px solid #ddd; border-radius: 8px; cursor: pointer; background: #fff;
+}
+.dialog input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+.dialog input[type="color"]::-webkit-color-swatch { border: none; border-radius: 6px; }
+.dialog input[type="color"]::-moz-color-swatch { border: none; border-radius: 6px; }
 .dialog-actions { display: flex; gap: 12px; margin-top: 16px; justify-content: flex-end; }
 .dialog-actions button { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; background: #4A90D9; color: #fff; }
 .btn-cancel { background: #eee !important; color: #333 !important; }
