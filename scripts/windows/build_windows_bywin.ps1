@@ -188,7 +188,12 @@ else {
 # ─── 内存优化：单线程编译 windows crate，避免 Windows 上 OOM ────────────
 $env:CARGO_BUILD_JOBS = '1'
 $env:NODE_OPTIONS = '--max-old-space-size=8192 --max-semi-space-size=512'
+# release 模式编译 windows crate 在低内存机器上常 OOM，降低 opt-level + 拆分 codegen-units 降峰值
+$env:CARGO_PROFILE_RELEASE_OPT_LEVEL = '1'
+$env:CARGO_PROFILE_RELEASE_CODEGEN_UNITS = '256'
+$env:CARGO_PROFILE_RELEASE_LTO = 'false'
 Write-Ok "  Set CARGO_BUILD_JOBS=1, NODE_OPTIONS=--max-old-space-size=8192（避免内存溢出）"
+Write-Ok "  Release 优化降级：OPT_LEVEL=1, CODEGEN_UNITS=256, LTO=false（防 windows crate OOM）"
 Write-Host ""
 
 Write-Host "  运行命令：pnpm tauri $Command" -ForegroundColor Cyan
