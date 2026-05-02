@@ -350,13 +350,7 @@ MyTodos 是一个无需自建后端的协作待办应用。所有团队数据以
     { "tagId": "uuid", "name": "生物",         "color": "#50E3C2", "createdAt": "2026-05-02T10:00:00Z" },
     { "tagId": "uuid", "name": "历史",         "color": "#B8E986", "createdAt": "2026-05-02T10:00:00Z" },
     { "tagId": "uuid", "name": "地理",         "color": "#9B9B9B", "createdAt": "2026-05-02T10:00:00Z" },
-    { "tagId": "uuid", "name": "科学",         "color": "#F8E71C", "createdAt": "2026-05-02T10:00:00Z" },
-    { "tagId": "uuid", "name": "道德与法治",    "color": "#FF6900", "createdAt": "2026-05-02T10:00:00Z" },
-    { "tagId": "uuid", "name": "体育",         "color": "#5AC8FA", "createdAt": "2026-05-02T10:00:00Z" },
-    { "tagId": "uuid", "name": "音乐",         "color": "#FF2D55", "createdAt": "2026-05-02T10:00:00Z" },
-    { "tagId": "uuid", "name": "美术",         "color": "#5856D6", "createdAt": "2026-05-02T10:00:00Z" },
-    { "tagId": "uuid", "name": "信息技术",      "color": "#007AFF", "createdAt": "2026-05-02T10:00:00Z" },
-    { "tagId": "uuid", "name": "劳动",         "color": "#34C759", "createdAt": "2026-05-02T10:00:00Z" }
+    { "tagId": "uuid", "name": "道德与法治",    "color": "#FF6900", "createdAt": "2026-05-02T10:00:00Z" }
   ],
   "revision": {
     "remoteRevision": "abc123..."            // string，远端版本指纹（用于冲突检测）
