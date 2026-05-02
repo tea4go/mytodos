@@ -1,0 +1,4 @@
+[build]
+# 限制并行编译任务数，避免低内存机器上 rustc OOM
+# 触发症状：STATUS_COMMITMENT_LIMIT (0xc000012d) / E0462 found staticlib std instead of rlib
+jobs = 1
