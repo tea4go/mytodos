@@ -96,7 +96,8 @@ MyTodos 是一个无需自建后端的协作待办应用。所有团队数据以
 - 应用内置 Gitee PAT 与**全局配置 gistId（GLOBAL_GIST_ID）**，在编译时通过 `.env` 文件注入：
   - PAT：写入 `backend/src-tauri/.env` 的 `GITEE_PAT`，随每次 API 请求携带。
   - 全局配置 gistId：写入 `frontend/.env` 的 `VITE_GLOBAL_GIST_ID`，前端编译期注入。
-- 全局配置 gist 中保存：工作区列表（含每个工作区的成员、标签、名称、描述），由所有终端用户共享读写。
+- 全局配置 gist 中保存三个并列数组：`workspaces`（工作区基本信息）、`members`（全局成员列表）、`tags`（全局标签列表），由所有终端用户共享读写。
+- 成员与标签为**全局共享**：成员不归属于具体工作区，所有工作区共用同一份成员表与标签表。
 - 每个工作区另有独立的 todos gist，仅保存任务数据（todos.json），由工作区配置项中的 `todosGistId` 指向。
 - 凭证与全局 gistId 由开发者在构建/部署前配置，终端用户不可见、不可修改。
 
@@ -109,10 +110,10 @@ MyTodos 是一个无需自建后端的协作待办应用。所有团队数据以
 - 取消「加入工作区（输入 gistId）」入口：所有终端共享同一份全局配置，无须手动加入。
 - 密码归属于成员（Member）。每位成员有独立的 6 位数字密码。
 - 工作区登录页（UI-002a）作为日常登录入口：
-  - 列出该工作区中 role 为 `parent` 或 `student` 的成员卡片，**不展示管理员**。
-  - 点击成员卡片 → 输入该成员的 6 位数字密码 → 与全局配置中该工作区的成员条目 `password` 字段比对验证。
-  - 页面右上角提供独立的「管理员入口」图标按钮，点击后弹窗输入管理员的 6 位数字密码（与该工作区 role 为 `admin` 的成员密码比对）。
-- 验证通过后，将当前成员标识（memberId）、所属工作区与登录凭据保存在本地系统安全存储中，后续启动自动读取，无需重复登录。成员的 `role` 由全局配置中该成员条目派生，无需用户单独选择。
+  - 列出全局成员中 role 为 `parent` 或 `student` 的成员卡片，**不展示管理员**。
+  - 点击成员卡片 → 输入该成员的 6 位数字密码 → 与全局配置 `members` 中该成员条目的 `password` 字段比对验证。
+  - 页面右上角提供独立的「管理员入口」图标按钮，点击后弹窗输入管理员的 6 位数字密码（与全局成员中 role 为 `admin` 的成员密码比对）。
+- 验证通过后，将当前成员标识（memberId）、所属工作区与登录凭据保存在本地系统安全存储中，后续启动自动读取，无需重复登录。成员的 `role` 由全局 `members` 中该成员条目派生，无需用户单独选择。
 - 各角色进入后的目标页面：
   - **管理员** → 管理员主页（UI-200）。
   - **家长** → UI-101 任务列表页（已自动选中所登录的工作区）。
@@ -129,9 +130,11 @@ MyTodos 是一个无需自建后端的协作待办应用。所有团队数据以
 - 创建工作区时仅设置管理员本人的密码；其他成员的密码在 FR-005 添加成员时单独设置。
 - 创建流程：
   1. 应用创建一个新的 Gitee 代码片段作为该工作区的 todos 存储，并取得 `todosGistId`。
-  2. 应用拉取全局配置 gist，向 `workspaces` 数组追加一条新工作区配置项（含 workspaceId、name、description、todosGistId、members[admin]、tags 默认集合）。
+  2. 应用拉取全局配置 gist：
+     - 向 `workspaces` 数组追加一条新工作区配置项（仅含 workspaceId、name、description、todosGistId、createdAt、updatedAt）。
+     - 若全局 `members` 不含该 admin（按 displayName 比对或新生成 memberId）则追加；若全局 `tags` 为空则一次性写入默认标签集合。
   3. 写回全局配置 gist。
-- 创建成功后该工作区的 `members` 至少包含创建者（admin 角色）一条记录，且该记录包含其 `password` 字段。
+- 创建成功后全局 `members` 至少包含创建者（admin 角色）一条记录，且该记录包含其 `password` 字段。
 
 **FR-004 切换工作区**
 
@@ -141,7 +144,7 @@ MyTodos 是一个无需自建后端的协作待办应用。所有团队数据以
 
 **FR-005 成员管理**
 
-- 管理员可维护成员列表（2-5 人）：
+- 管理员可维护**全局**成员列表（2-5 人，所有工作区共用）：
   - 添加成员：记录成员显示名、角色（管理员 / 家长 / 学生）、6 位数字密码（必填，缺省值 `123456`，便于管理员快速创建后再让本人修改）。
   - 编辑成员信息：可修改显示名与重置该成员的 6 位数字密码；**角色一经创建不可修改**（避免误改导致权限错乱，确需变更角色时由管理员先移除再添加）。
   - 移除成员。
@@ -149,12 +152,12 @@ MyTodos 是一个无需自建后端的协作待办应用。所有团队数据以
 
 **FR-006 标签管理**
 
-- 管理员可在工作区设置中管理标签：
+- 管理员可在标签管理页维护**全局**标签集合（所有工作区共用）：
   - 创建标签：标签名称（必填，1-20 字）、颜色标识（可选）。
   - 编辑标签：修改名称或颜色。
   - 删除标签：删除后所有任务中该标签的关联同步移除。
 - 家长在创建/编辑任务时可选择已存在的标签，**不可**创建或管理标签。
-- 标签数量上限：20 个/工作区。
+- 标签数量上限：20 个。
 
 ### 3.2 任务管理
 
@@ -343,25 +346,25 @@ MyTodos 是一个无需自建后端的协作待办应用。所有团队数据以
 ```json
 {
   "schemaVersion": 2,                         // int，数据结构版本号
-  "workspaces": [                             // array，所有工作区的完整配置
+  "workspaces": [                             // array，工作区基本信息（不含成员/标签）
     {
       "workspaceId": "uuid",                  // UUID，工作区唯一标识
       "name": "一中实验初中",                  // string，工作区名称
       "description": "",                      // string，工作区描述（可选）
       "todosGistId": "abc123def456",          // string，该工作区任务存储所在的 gistId
       "createdAt": "2026-05-02T10:00:00Z",   // datetime，创建时间
-      "updatedAt": "2026-05-02T10:00:00Z",   // datetime，最后更新时间
-      "members": [                            // array，成员列表（2-5 人，每人含独立密码）
-        { "memberId": "uuid", "displayName": "管理员", "role": "admin",   "password": "123456" },
-        { "memberId": "uuid", "displayName": "父母",   "role": "parent",  "password": "234567" },
-        { "memberId": "uuid", "displayName": "Jane",  "role": "student", "password": "345678" },
-        { "memberId": "uuid", "displayName": "Eric",  "role": "student", "password": "456789" }
-      ],
-      "tags": [                               // array，标签列表（上限 20 个/工作区）
-        { "tagId": "uuid", "name": "语文", "color": "#E74C3C", "createdAt": "2026-05-02T10:00:00Z" },
-        { "tagId": "uuid", "name": "数学", "color": "#4A90D9", "createdAt": "2026-05-02T10:00:00Z" }
-      ]
+      "updatedAt": "2026-05-02T10:00:00Z"    // datetime，最后更新时间
     }
+  ],
+  "members": [                                // array，全局成员列表（2-5 人，所有工作区共享）
+    { "memberId": "uuid", "displayName": "管理员", "role": "admin",   "password": "123456" },
+    { "memberId": "uuid", "displayName": "父母",   "role": "parent",  "password": "234567" },
+    { "memberId": "uuid", "displayName": "Jane",  "role": "student", "password": "345678" },
+    { "memberId": "uuid", "displayName": "Eric",  "role": "student", "password": "456789" }
+  ],
+  "tags": [                                   // array，全局标签列表（上限 20 个，所有工作区共享）
+    { "tagId": "uuid", "name": "语文", "color": "#E74C3C", "createdAt": "2026-05-02T10:00:00Z" },
+    { "tagId": "uuid", "name": "数学", "color": "#4A90D9", "createdAt": "2026-05-02T10:00:00Z" }
   ]
 }
 ```

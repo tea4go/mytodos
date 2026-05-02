@@ -41,7 +41,7 @@ export interface Task {
   deletedBy: string | null
 }
 
-// ===== 工作区配置（全局 gist 中的单个工作区项） =====
+// ===== 工作区配置（全局 gist 中的单个工作区项；不含成员/标签） =====
 export interface WorkspaceConfig {
   workspaceId: string
   name: string
@@ -49,14 +49,15 @@ export interface WorkspaceConfig {
   todosGistId: string
   createdAt: string
   updatedAt: string
-  members: Member[]
-  tags: Tag[]
 }
 
 // ===== 全局配置（GLOBAL_GIST 中的 global.json） =====
+// 成员与标签为全局共享，与具体工作区无关联。
 export interface GlobalConfig {
   schemaVersion: number
   workspaces: WorkspaceConfig[]
+  members: Member[]
+  tags: Tag[]
 }
 
 // ===== 工作区元数据（兼容旧 schema，已弃用，保留类型避免编译错误） =====

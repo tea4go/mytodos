@@ -1,6 +1,6 @@
 <template>
   <div class="admin-home-page">
-    <TopBar :title="wsStore.meta?.workspace.name ?? '管理员主页'" :is-online="ui.isOnline" />
+    <TopBar title="后台管理" :is-online="ui.isOnline" />
     <div class="content">
       <p class="role-info">当前身份：管理员（{{ currentDisplayName }}）</p>
       <div class="entries">
@@ -16,8 +16,8 @@
         </button>
         <button class="entry-btn" @click="go('settings')">
           <span class="icon">⚙️</span>
-          <span class="label">工作区设置</span>
-          <span class="desc">编辑工作区名称、描述与查看 gistId</span>
+          <span class="label">工作区管理</span>
+          <span class="desc">新增、编辑、删除工作区</span>
         </button>
       </div>
     </div>

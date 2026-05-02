@@ -33,7 +33,10 @@ export interface CreateWorkspaceResult {
 /**
  * 创建工作区：
  * 1) 新建一个 todos gist（仅 todos.json）
- * 2) 拉取全局配置 gist，向 workspaces 数组追加新工作区
+ * 2) 拉取全局配置 gist：
+ *    - workspaces 追加新工作区基本信息（不含 members/tags）
+ *    - global.members 中按 memberId 去重追加管理员
+ *    - global.tags 为空时一次性写入默认标签
  * 3) 写回全局配置 gist
  */
 export async function createWorkspace(input: CreateWorkspaceInput): Promise<CreateWorkspaceResult> {
@@ -59,10 +62,18 @@ export async function createWorkspace(input: CreateWorkspaceInput): Promise<Crea
     todosGistId: todosGist.id,
     createdAt: now,
     updatedAt: now,
-    members: [adminMember],
-    tags: DEFAULT_TAGS.map(t => ({ ...t, createdAt: now })),
   }
   globalCfg.workspaces.push(cfg)
+  // 全局成员：按 memberId 去重追加 admin
+  if (!globalCfg.members.some(m => m.memberId === adminMember.memberId)) {
+    globalCfg.members.push(adminMember)
+  }
+  // 全局标签：仅在为空时一次性写入默认集合
+  if (globalCfg.tags.length === 0) {
+    for (const t of DEFAULT_TAGS) {
+      globalCfg.tags.push({ ...t, createdAt: now })
+    }
+  }
   // 3) 写回全局
   await saveGlobalConfig(globalCfg)
   // 同步 store
@@ -71,9 +82,65 @@ export async function createWorkspace(input: CreateWorkspaceInput): Promise<Crea
   const meta: WorkspaceMeta = {
     schemaVersion: 2,
     workspace: { workspaceId, name: cfg.name, description: cfg.description, createdAt: now, updatedAt: now },
-    members: cfg.members,
-    tags: cfg.tags,
+    members: globalCfg.members,
+    tags: globalCfg.tags,
     revision: { remoteRevision: '' },
   }
   return { workspaceId, gistId: todosGist.id, adminMember, meta }
+}
+
+/**
+ * 已有 admin 上下文下新增一个工作区：仅创建 todos gist + 追加 workspaces 条目，
+ * 不再生成新 admin、不再覆盖默认标签。
+ */
+export async function createAdditionalWorkspace(input: { name: string; description: string }): Promise<WorkspaceConfig> {
+  const wsStore = useWorkspaceStore()
+  const now = new Date().toISOString()
+  const workspaceId = `ws_${Date.now()}`
+  const todosGist = await createGist(`MyTodos: ${input.name}`, {
+    'todos.json': serializeTasks([]),
+  })
+  const globalCfg = await fetchGlobalConfig()
+  const cfg: WorkspaceConfig = {
+    workspaceId,
+    name: input.name.trim(),
+    description: input.description.trim(),
+    todosGistId: todosGist.id,
+    createdAt: now,
+    updatedAt: now,
+  }
+  globalCfg.workspaces.push(cfg)
+  await saveGlobalConfig(globalCfg)
+  wsStore.setGlobal(globalCfg)
+  return cfg
+}
+
+/** 更新工作区基本信息（名称/描述）。 */
+export async function updateWorkspaceConfig(workspaceId: string, patch: { name?: string; description?: string }): Promise<void> {
+  const wsStore = useWorkspaceStore()
+  const globalCfg = await fetchGlobalConfig()
+  const idx = globalCfg.workspaces.findIndex(w => w.workspaceId === workspaceId)
+  if (idx < 0) throw new Error('工作区不存在')
+  const now = new Date().toISOString()
+  const w = globalCfg.workspaces[idx]
+  globalCfg.workspaces[idx] = {
+    ...w,
+    name: patch.name?.trim() ?? w.name,
+    description: patch.description?.trim() ?? w.description,
+    updatedAt: now,
+  }
+  await saveGlobalConfig(globalCfg)
+  wsStore.setGlobal(globalCfg)
+}
+
+/** 从全局配置中移除工作区（todos gist 不删除，留给开发者手工清理）。 */
+export async function deleteWorkspace(workspaceId: string): Promise<void> {
+  const wsStore = useWorkspaceStore()
+  const globalCfg = await fetchGlobalConfig()
+  globalCfg.workspaces = globalCfg.workspaces.filter(w => w.workspaceId !== workspaceId)
+  await saveGlobalConfig(globalCfg)
+  wsStore.setGlobal(globalCfg)
+  if (wsStore.currentWorkspaceId === workspaceId) {
+    wsStore.clearCurrentWorkspace()
+  }
 }

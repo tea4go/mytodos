@@ -130,7 +130,9 @@ interface WorkspaceState {
 
 interface GlobalConfig {
   schemaVersion: 2
-  workspaces: WorkspaceConfig[]        // 工作区配置列表（含成员、标签）
+  workspaces: WorkspaceConfig[]        // 工作区基本信息（不含成员/标签）
+  members: Member[]                    // 全局成员列表（所有工作区共享）
+  tags: Tag[]                          // 全局标签列表（所有工作区共享）
 }
 
 interface WorkspaceConfig {
@@ -140,8 +142,6 @@ interface WorkspaceConfig {
   todosGistId: string
   createdAt: string
   updatedAt: string
-  members: Member[]
-  tags: Tag[]
 }
 ```
 

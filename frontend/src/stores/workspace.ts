@@ -15,7 +15,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     })),
   )
 
-  /** 当前工作区配置（含成员、标签）。 */
+  /** 当前工作区基本信息。 */
   const currentConfig = computed<WorkspaceConfig | null>(() => {
     if (!global.value || !currentWorkspaceId.value) return null
     return global.value.workspaces.find(w => w.workspaceId === currentWorkspaceId.value) ?? null
@@ -24,10 +24,12 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   /** 当前工作区 todos gistId。 */
   const currentGistId = computed<string | null>(() => currentConfig.value?.todosGistId ?? null)
 
-  const members = computed<Member[]>(() => currentConfig.value?.members ?? [])
-  const tags = computed<Tag[]>(() => currentConfig.value?.tags ?? [])
+  /** 全局成员（所有工作区共享）。 */
+  const members = computed<Member[]>(() => global.value?.members ?? [])
+  /** 全局标签（所有工作区共享）。 */
+  const tags = computed<Tag[]>(() => global.value?.tags ?? [])
 
-  /** 兼容旧 API：返回类似 meta 的视图。 */
+  /** 兼容旧 API：返回类似 meta 的视图（成员/标签来自全局共享池）。 */
   const meta = computed<WorkspaceMeta | null>(() => {
     const c = currentConfig.value
     if (!c) return null
@@ -40,8 +42,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
         createdAt: c.createdAt,
         updatedAt: c.updatedAt,
       },
-      members: c.members,
-      tags: c.tags,
+      members: global.value?.members ?? [],
+      tags: global.value?.tags ?? [],
       revision: { remoteRevision: '' },
     }
   })
@@ -66,9 +68,12 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     if (id) currentWorkspaceId.value = id
   }
 
-  /** 兼容旧 API：基于 WorkspaceMeta 更新全局配置中的对应工作区项（仅内存，不写远端）。 */
+  /**
+   * 兼容旧 API：基于 WorkspaceMeta 更新对应工作区基本信息 + 全局成员/标签池。
+   * 仅修改内存中的 global，不写远端。
+   */
   function setMeta(m: WorkspaceMeta) {
-    if (!global.value) global.value = { schemaVersion: 2, workspaces: [] }
+    if (!global.value) global.value = { schemaVersion: 2, workspaces: [], members: [], tags: [] }
     const existing = global.value.workspaces.find(w => w.workspaceId === m.workspace.workspaceId)
     const cfg: WorkspaceConfig = {
       workspaceId: m.workspace.workspaceId,
@@ -77,15 +82,16 @@ export const useWorkspaceStore = defineStore('workspace', () => {
       todosGistId: existing?.todosGistId ?? '',
       createdAt: m.workspace.createdAt,
       updatedAt: m.workspace.updatedAt,
-      members: m.members,
-      tags: m.tags,
     }
     upsertWorkspaceConfig(cfg)
+    // meta.members / meta.tags 视为全局成员/标签的当前快照，整体替换
+    global.value.members = m.members
+    global.value.tags = m.tags
   }
 
   /** 直接写入全局配置中的工作区项（含 todosGistId）。 */
   function upsertWorkspaceConfig(cfg: WorkspaceConfig) {
-    if (!global.value) global.value = { schemaVersion: 2, workspaces: [] }
+    if (!global.value) global.value = { schemaVersion: 2, workspaces: [], members: [], tags: [] }
     const idx = global.value.workspaces.findIndex(w => w.workspaceId === cfg.workspaceId)
     if (idx >= 0) global.value.workspaces[idx] = cfg
     else global.value.workspaces.push(cfg)

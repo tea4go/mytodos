@@ -32,7 +32,7 @@
 
     <AdminLoginDialog
       :visible="showAdminDialog"
-      :meta="wsStore.meta"
+      :members="wsStore.members"
       @close="showAdminDialog = false"
       @success="onAdminLogin"
     />

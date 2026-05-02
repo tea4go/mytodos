@@ -75,9 +75,9 @@ function defaultRouteForRole(role: string | null, currentWorkspaceId: string | n
   return '/workspaces'
 }
 
-/** 未登录时的默认入口（本地有工作区列表时跳列表，否则跳引导页）。 */
-function defaultUnauthedRoute(workspaceCount: number): string {
-  return workspaceCount > 0 ? '/workspaces' : '/guide'
+/** 未登录时的默认入口（直接进全局登录页）。 */
+function defaultUnauthedRoute(): string {
+  return '/guide'
 }
 
 /** 允许在未登录状态访问的路由名。 */
@@ -98,13 +98,9 @@ router.beforeEach(async (to, _from, next) => {
 
   if (!auth.isLoggedIn) {
     if (to.name && PUBLIC_ROUTES.has(String(to.name))) {
-      // Guide 页：本地已有工作区时直接跳工作区列表，避免回到引导页
-      if (to.name === 'Guide' && wsStore.workspaces.length > 0) {
-        return next('/workspaces')
-      }
       return next()
     }
-    return next(defaultUnauthedRoute(wsStore.workspaces.length))
+    return next(defaultUnauthedRoute())
   }
 
   // 已登录访问引导页 → 跳角色默认页

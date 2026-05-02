@@ -10,7 +10,7 @@
         </div>
       </template>
       <template v-else>
-        <p class="empty">该工作区暂无管理员</p>
+        <p class="empty">未配置管理员，请联系开发者</p>
         <div class="actions">
           <button class="btn-cancel" @click="cancel">关闭</button>
         </div>
@@ -22,9 +22,9 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import PasswordInput from '../guide/PasswordInput.vue'
-import type { Member, WorkspaceMeta } from '../../types'
+import type { Member } from '../../types'
 
-const props = defineProps<{ visible: boolean; meta: WorkspaceMeta | null }>()
+const props = defineProps<{ visible: boolean; members: Member[] }>()
 const emit = defineEmits<{
   close: []
   success: [data: { member: Member; password: string }]
@@ -34,7 +34,7 @@ const error = ref<string | null>(null)
 const pwKey = ref(0)
 
 const adminMember = computed<Member | null>(() =>
-  props.meta?.members.find(m => m.role === 'admin') ?? null,
+  props.members.find(m => m.role === 'admin') ?? null,
 )
 
 watch(() => props.visible, v => {

@@ -22,12 +22,38 @@ export function parseGlobalFromGist(gist: GistResponse): GlobalConfig {
   const file = gist.files?.['global.json']
   if (!file?.content) {
     // 全局 gist 还未初始化（首次部署）：返回空配置
-    return { schemaVersion: 2, workspaces: [] }
+    return { schemaVersion: 2, workspaces: [], members: [], tags: [] }
   }
   const parsed = JSON.parse(file.content)
+  const workspacesRaw: any[] = Array.isArray(parsed.workspaces) ? parsed.workspaces : []
+  // 兼容旧结构：workspaces[i] 内含 members/tags 时，合并到全局
+  const aggregatedMembers: any[] = Array.isArray(parsed.members) ? [...parsed.members] : []
+  const aggregatedTags: any[] = Array.isArray(parsed.tags) ? [...parsed.tags] : []
+  const workspaces = workspacesRaw.map(w => {
+    if (Array.isArray(w.members)) {
+      for (const m of w.members) {
+        if (!aggregatedMembers.some(x => x.memberId === m.memberId)) aggregatedMembers.push(m)
+      }
+    }
+    if (Array.isArray(w.tags)) {
+      for (const t of w.tags) {
+        if (!aggregatedTags.some(x => x.tagId === t.tagId)) aggregatedTags.push(t)
+      }
+    }
+    return {
+      workspaceId: w.workspaceId,
+      name: w.name,
+      description: w.description ?? '',
+      todosGistId: w.todosGistId,
+      createdAt: w.createdAt,
+      updatedAt: w.updatedAt,
+    }
+  })
   return {
     schemaVersion: parsed.schemaVersion ?? 2,
-    workspaces: Array.isArray(parsed.workspaces) ? parsed.workspaces : [],
+    workspaces,
+    members: aggregatedMembers,
+    tags: aggregatedTags,
   }
 }
 
