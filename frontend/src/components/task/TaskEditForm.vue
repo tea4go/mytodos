@@ -22,6 +22,12 @@
         <option v-for="m in studentMembers" :key="m.memberId" :value="m.memberId">{{ m.displayName }}</option>
       </select>
     </label>
+    <label>标签
+      <select v-model="selectedTagId">
+        <option value="">（无）</option>
+        <option v-for="t in tags" :key="t.tagId" :value="t.tagId">{{ t.name }}</option>
+      </select>
+    </label>
     <div class="form-actions">
       <button @click="$emit('cancel')" class="btn-cancel">取消</button>
       <button @click="submit" :disabled="!valid">保存</button>
@@ -31,13 +37,20 @@
 
 <script setup lang="ts">
 import { reactive, computed } from 'vue'
-import type { Task, Member } from '../../types'
+import type { Task, Member, Tag } from '../../types'
+import { useWorkspaceStore } from '../../stores/workspace'
 
-const props = defineProps<{ task: Task; members: Member[]; hideStatus?: boolean }>()
+const props = defineProps<{ task: Task; members: Member[]; hideStatus?: boolean; tags?: Tag[] }>()
 const emit = defineEmits<{ save: [task: Task]; cancel: [] }>()
 
+const wsStore = useWorkspaceStore()
 const form = reactive<Task>({ ...props.task })
 const studentMembers = computed(() => props.members.filter(m => m.role === 'student'))
+const tags = computed<Tag[]>(() => props.tags ?? wsStore.tags)
+const selectedTagId = computed<string>({
+  get: () => form.tagIds[0] ?? '',
+  set: (v: string) => { form.tagIds = v ? [v] : [] },
+})
 const valid = computed(() => form.title.trim().length > 0)
 
 function submit() { emit('save', { ...form }) }
