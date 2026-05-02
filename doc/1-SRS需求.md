@@ -315,8 +315,23 @@ MyTodos 是一个无需自建后端的协作待办应用。所有团队数据以
   "members": [                                // array，成员列表（2-5 人）
     {
       "memberId": "uuid",                    // UUID，成员唯一标识
-      "displayName": "张三",                  // string，成员显示名
-      "role": "parent"                       // enum，角色：admin / parent / student
+      "displayName": "管理员",                // string，成员显示名
+      "role": "admin"                        // enum，角色：admin / parent / student
+    },
+    {
+      "memberId": "uuid",
+      "displayName": "父母",
+      "role": "parent"
+    },
+    {
+      "memberId": "uuid",
+      "displayName": "Jane",
+      "role": "student"
+    },
+    {
+      "memberId": "uuid",
+      "displayName": "Eric",
+      "role": "student"
     }
   ],
   "tags": [                                   // array，标签列表（上限 20 个）
