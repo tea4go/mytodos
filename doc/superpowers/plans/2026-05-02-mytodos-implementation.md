@@ -8,7 +8,7 @@
 
 **技术栈：** Rust (Tauri 2) + Vue 3 (Composition API) + TypeScript + Pinia + Vue Router 4 + Vite
 
----
+***
 
 ## 文件结构总览
 
@@ -63,7 +63,7 @@ mytodos/
 └── index.html
 ```
 
----
+***
 
 ## 阶段一：项目脚手架与基础设施
 
@@ -102,13 +102,13 @@ git commit -m "chore: scaffold Tauri 2 + Vue 3 + TS project
 Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 ```
 
----
+***
 
 ### 任务 1.2：创建 TypeScript 类型定义
 
 **文件：**
-- 创建：`frontend/src/types/index.ts`
 
+- 创建：`frontend/src/types/index.ts`
 - [ ] **步骤 1：编写完整类型定义**
 
 ```typescript
@@ -220,16 +220,16 @@ git commit -m "feat: add TypeScript type definitions
 Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 ```
 
----
+***
 
 ### 任务 1.3：创建工具函数
 
 **文件：**
+
 - 创建：`frontend/src/utils/date.ts`
 - 创建：`frontend/src/utils/sort.ts`
 - 创建：`frontend/src/utils/filter.ts`
 - 创建：`frontend/src/utils/search.ts`
-
 - [ ] **步骤 1：日期工具**
 
 ```typescript
@@ -370,17 +370,17 @@ git commit -m "feat: add utility functions (sort, filter, search, date)
 Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 ```
 
----
+***
 
 ## 阶段二：Rust 后端
 
 ### 任务 2.1：配置 Rust 依赖与 .env 读取
 
 **文件：**
+
 - 修改：`backend/src-tauri/Cargo.toml`
 - 创建：`backend/src-tauri/.env`
 - 创建：`backend/src-tauri/src/config.rs`
-
 - [ ] **步骤 1：添加 Cargo 依赖**
 
 ```toml
@@ -435,14 +435,14 @@ git commit -m "feat: add Rust dependencies and env config
 Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 ```
 
----
+***
 
 ### 任务 2.2：实现 Gitee API 客户端
 
 **文件：**
+
 - 创建：`backend/src-tauri/src/commands/mod.rs`
 - 创建：`backend/src-tauri/src/commands/gist.rs`
-
 - [ ] **步骤 1：创建 commands 模块**
 
 ```rust
@@ -637,13 +637,13 @@ git commit -m "feat: implement Gitee API client commands
 Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 ```
 
----
+***
 
 ### 任务 2.3：实现安全存储命令
 
 **文件：**
-- 创建：`backend/src-tauri/src/commands/secure_store.rs`
 
+- 创建：`backend/src-tauri/src/commands/secure_store.rs`
 - [ ] **步骤 1：实现安全存储**
 
 ```rust
@@ -677,7 +677,7 @@ pub async fn secure_remove(key: String) -> Result<(), String> {
 }
 ```
 
-- [ ] **步骤 2：添加 once_cell 依赖**
+- [ ] **步骤 2：添加 once\_cell 依赖**
 
 ```toml
 # backend/src-tauri/Cargo.toml — 在 [dependencies] 中追加
@@ -715,19 +715,19 @@ git commit -m "feat: add secure storage commands
 Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 ```
 
----
+***
 
 ## 阶段三：前端基础设施
 
 ### 任务 3.1：创建 Pinia Stores
 
 **文件：**
+
 - 创建：`frontend/src/stores/auth.ts`
 - 创建：`frontend/src/stores/ui.ts`
 - 创建：`frontend/src/stores/workspace.ts`
 - 创建：`frontend/src/stores/task.ts`
 - 创建：`frontend/src/stores/tag.ts`
-
 - [ ] **步骤 1：auth Store**
 
 ```typescript
@@ -949,14 +949,14 @@ git commit -m "feat: add Pinia stores (auth, ui, workspace, task, tag)
 Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 ```
 
----
+***
 
 ### 任务 3.2：配置路由与守卫
 
 **文件：**
+
 - 创建：`frontend/src/router/index.ts`
 - 修改：`frontend/src/main.ts`
-
 - [ ] **步骤 1：创建路由**
 
 ```typescript
@@ -1086,19 +1086,19 @@ git commit -m "feat: configure Vue Router with role-based guards
 Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 ```
 
----
+***
 
 ## 阶段四：页面与组件实现
 
 ### 任务 4.1：引导页与公共组件
 
 **文件：**
+
 - 创建：`frontend/src/views/GuideView.vue`
 - 创建：`frontend/src/components/guide/RoleSelector.vue`
 - 创建：`frontend/src/components/guide/PasswordInput.vue`
 - 创建：`frontend/src/components/common/ErrorToast.vue`
 - 创建：`frontend/src/components/common/LoadingSpinner.vue`
-
 - [ ] **步骤 1：RoleSelector 组件**
 
 ```vue
@@ -1323,15 +1323,15 @@ git commit -m "feat: implement guide page with role selector and password input
 Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 ```
 
----
+***
 
 ### 任务 4.2：工作区列表页
 
 **文件：**
+
 - 创建：`frontend/src/views/WorkspaceListView.vue`
 - 创建：`frontend/src/components/workspace/WorkspaceCard.vue`
 - 创建：`frontend/src/components/workspace/CreateWorkspaceDialog.vue`
-
 - [ ] **步骤 1：WorkspaceCard 组件**
 
 ```vue
@@ -1509,18 +1509,18 @@ git commit -m "feat: implement workspace list and create dialog
 Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 ```
 
----
+***
 
 ### 任务 4.3：任务列表页（核心页面）
 
 **文件：**
+
 - 创建：`frontend/src/views/TaskListView.vue`
 - 创建：`frontend/src/components/common/TopBar.vue`
 - 创建：`frontend/src/components/common/SearchBar.vue`
 - 创建：`frontend/src/components/task/FilterBar.vue`
 - 创建：`frontend/src/components/task/TaskItem.vue`
 - 创建：`frontend/src/components/task/AddTaskButton.vue`
-
 - [ ] **步骤 1：TopBar 组件**
 
 ```vue
@@ -1857,14 +1857,14 @@ git commit -m "feat: implement task list with search, filter, and create dialog
 Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 ```
 
----
+***
 
 ### 任务 4.4：任务详情页
 
 **文件：**
+
 - 创建：`frontend/src/views/TaskDetailView.vue`
 - 创建：`frontend/src/components/task/TaskEditForm.vue`
-
 - [ ] **步骤 1：TaskEditForm 组件**
 
 ```vue
@@ -2035,18 +2035,18 @@ git commit -m "feat: implement task detail view with edit form
 Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 ```
 
----
+***
 
 ### 任务 4.5：标签管理页与成员管理页
 
 **文件：**
+
 - 创建：`frontend/src/views/TagManageView.vue`
 - 创建：`frontend/src/components/tag/TagList.vue`
 - 创建：`frontend/src/components/tag/TagEditDialog.vue`
 - 创建：`frontend/src/views/MemberManageView.vue`
 - 创建：`frontend/src/components/member/MemberList.vue`
 - 创建：`frontend/src/components/member/MemberEditDialog.vue`
-
 - [ ] **步骤 1：标签管理相关组件**
 
 ```vue
@@ -2213,15 +2213,15 @@ git commit -m "feat: implement tag management and member management pages
 Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 ```
 
----
+***
 
 ## 阶段五：API 集成与业务逻辑
 
 ### 任务 5.1：创建 API 服务层
 
 **文件：**
-- 创建：`frontend/src/services/api.ts`
 
+- 创建：`frontend/src/services/api.ts`
 - [ ] **步骤 1：API 服务封装**
 
 ```typescript
@@ -2294,13 +2294,13 @@ git commit -m "feat: add API service layer for Gitee and secure storage
 Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 ```
 
----
+***
 
 ### 任务 5.2：工作区创建集成
 
 **文件：**
-- 修改：`frontend/src/views/WorkspaceListView.vue`
 
+- 修改：`frontend/src/views/WorkspaceListView.vue`
 - [ ] **步骤 1：实现 createWorkspace 函数**
 
 修改 `WorkspaceListView.vue` 中的 `handleCreate`：
@@ -2372,14 +2372,14 @@ git commit -m "feat: integrate workspace creation with Gitee API
 Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 ```
 
----
+***
 
 ### 任务 5.3：任务 CRUD 集成
 
 **文件：**
+
 - 修改：`frontend/src/views/TaskListView.vue` — 完善 handleCreate
 - 修改：`frontend/src/views/TaskDetailView.vue` — 完善 handleAction 和 handleSave
-
 - [ ] **步骤 1：实现任务创建**
 
 ```typescript
@@ -2499,13 +2499,13 @@ git commit -m "feat: integrate task CRUD with Gitee API
 Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 ```
 
----
+***
 
 ### 任务 5.4：工作区加载与数据同步
 
 **文件：**
-- 创建：`frontend/src/services/sync.ts`
 
+- 创建：`frontend/src/services/sync.ts`
 - [ ] **步骤 1：同步服务**
 
 ```typescript
@@ -2559,15 +2559,15 @@ git commit -m "feat: add workspace loading and data sync
 Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 ```
 
----
+***
 
 ## 阶段六：样式与打磨
 
 ### 任务 6.1：全局样式
 
 **文件：**
-- 创建：`frontend/src/assets/styles/main.css`
 
+- 创建：`frontend/src/assets/styles/main.css`
 - [ ] **步骤 1：移动端全局样式**
 
 ```css
@@ -2595,7 +2595,7 @@ git commit -m "style: add global mobile-first styles
 Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 ```
 
----
+***
 
 ### 任务 6.2：最终验证
 
@@ -2636,15 +2636,16 @@ git commit -m "chore: final integration and build verification
 Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 ```
 
----
+***
 
 ## 附录：自检清单
 
-- [x] FR-001 ~ FR-006 全部覆盖（任务 1.2, 3.1, 4.2, 4.5, 5.2）
-- [x] FR-101 ~ FR-106 全部覆盖（任务 4.3, 4.4, 5.3）
+- [x] FR-001 \~ FR-006 全部覆盖（任务 1.2, 3.1, 4.2, 4.5, 5.2）
+- [x] FR-101 \~ FR-106 全部覆盖（任务 4.3, 4.4, 5.3）
 - [x] 角色权限控制（任务 3.2 路由守卫 + 所有视图的条件渲染）
 - [x] 纯在线模式（无本地缓存，直接 Gitee API 读写）
 - [x] 并发冲突处理（任务 5.3 saveTaskUpdate 中的 revision 检查逻辑）
 - [x] 安全存储（任务 2.3 + 3.1）
 - [x] 无占位符 — 所有步骤包含具体代码或命令
 - [x] 类型一致性 — Task, WorkspaceMeta 等类型在 types/index.ts 定义，全局复用
+
