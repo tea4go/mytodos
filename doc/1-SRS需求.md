@@ -101,8 +101,9 @@ MyTodos 是一个无需自建后端的协作待办应用。所有团队数据以
 
 - 用户首次打开应用时：
   - 选择角色（管理员 / 家长 / 学生）。
-  - 输入 6 位数字口令（由管理员预先分发），验证通过后进入对应界面。
-- 角色和口令保存在本地系统安全存储中，后续启动自动读取，无需重复选择。
+  - 输入 6 位数字口令，与工作区 meta.json 中预设的口令比对验证。
+- 口令由管理员在创建工作区时预设（每种角色一个口令），存储在 meta.json 的 `passwords` 字段中。
+- 验证通过后，角色和口令保存在本地系统安全存储中，后续启动自动读取，无需重复选择。
 - 各角色进入后的目标页面：
   - **管理员** → UI-002 工作区配置页。
   - **家长** → 选择工作区 → UI-101 任务列表页。
@@ -113,7 +114,8 @@ MyTodos 是一个无需自建后端的协作待办应用。所有团队数据以
 - 管理员可创建工作区，填写：
   - 工作区名称（必填），例如：一中实验初中、软件谷小学等。
   - 工作区描述（可选）。
-- 创建工作区时，应用应创建或绑定一个 Gitee 代码片段作为远端存储，并生成工作区标识：
+- 创建工作区时，管理员需预设三种角色的 6 位数字口令（用于成员首次进入验证）。
+- 应用应创建或绑定一个 Gitee 代码片段作为远端存储，并生成工作区标识：
   - workspaceId（UUID）
   - gistId（代码片段 ID）
   - workspaceKey（可选：本地加密口令，用于对远端 JSON 加密）
@@ -338,8 +340,8 @@ MyTodos 是一个无需自建后端的协作待办应用。所有团队数据以
     {
       "tagId": "uuid",                       // UUID，标签唯一标识
       "name": "初中",                         // string，标签名称（1-20 字）
-      "color": "#4A90D9",                    // string，标签颜色（hex，可选）
-      "createdAt": "2026-05-02T10:00:00Z"   // datetime，创建时间
+      "color": "#4A90D9",                  // string，标签颜色（hex，可选）
+      "createdAt": "2026-05-02T10:00:00Z"    // datetime，创建时间
     },
     { "tagId": "uuid", "name": "小学",         "color": "#7ED321", "createdAt": "2026-05-02T10:00:00Z" },
     { "tagId": "uuid", "name": "语文",         "color": "#F5A623", "createdAt": "2026-05-02T10:00:00Z" },
@@ -350,8 +352,13 @@ MyTodos 是一个无需自建后端的协作待办应用。所有团队数据以
     { "tagId": "uuid", "name": "生物",         "color": "#50E3C2", "createdAt": "2026-05-02T10:00:00Z" },
     { "tagId": "uuid", "name": "历史",         "color": "#B8E986", "createdAt": "2026-05-02T10:00:00Z" },
     { "tagId": "uuid", "name": "地理",         "color": "#9B9B9B", "createdAt": "2026-05-02T10:00:00Z" },
-    { "tagId": "uuid", "name": "道德与法治",    "color": "#FF6900", "createdAt": "2026-05-02T10:00:00Z" }
+    { "tagId": "uuid", "name": "道法",         "color": "#FF6900", "createdAt": "2026-05-02T10:00:00Z" }
   ],
+  "passwords": {                               // object，角色口令（管理员预设）
+    "admin": "123456",                       // string，管理员 6 位数字口令
+    "parent": "234567",                      // string，家长 6 位数字口令
+    "student": "345678"                      // string，学生 6 位数字口令
+  },
   "revision": {
     "remoteRevision": "abc123..."            // string，远端版本指纹（用于冲突检测）
   }
@@ -367,16 +374,16 @@ MyTodos 是一个无需自建后端的协作待办应用。所有团队数据以
       "taskId": "uuid",                       // UUID，任务唯一标识
       "title": "完成数学作业",                  // string，标题（必填，1-80 字）
       "description": "第三章课后习题",           // string，详情描述（可选，1-256 字）
-      "status": "todo",                       // enum，状态：todo / in_progress / done
+      "status": "todo",                       // enum，状态：todo / doing / done
       "priority": "medium",                   // enum，优先级：low / medium / high
       "dueAt": "2026-05-03T18:00:00Z",       // datetime，截止日期时间（必填）
       "assigneeId": "uuid",                   // UUID，指派人 memberId（只支持 1 个）
       "tagIds": ["uuid"],                     // UUID[]，关联标签 ID 数组（可选）
-      "startedAt": null,                      // datetime，开始时间（进行中时记录，可空）
       "createdAt": "2026-05-02T10:00:00Z",   // datetime，创建时间
       "createdBy": "uuid",                    // UUID，创建人 memberId
       "updatedAt": "2026-05-02T10:00:00Z",   // datetime，最后更新时间
       "updatedBy": "uuid",                    // UUID，最后更新人 memberId
+      "startedAt": null,                      // datetime，开始时间（进行中时记录，可空）
       "completedAt": null,                    // datetime，完成时间（可空）
       "completedBy": null,                    // UUID，完成人 memberId（可空）
       "deletedAt": null,                      // datetime，删除时间（可空，逻辑删除标记）
