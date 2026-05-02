@@ -12,7 +12,7 @@ const DEFAULT_TAGS: Omit<Tag, 'createdAt'>[] = [
   { tagId: 'tag_biology', name: '生物', color: '#16A085' },
   { tagId: 'tag_history', name: '历史', color: '#8B4513' },
   { tagId: 'tag_geography', name: '地理', color: '#2C8C99' },
-  { tagId: 'tag_politics', name: '政治', color: '#C0392B' },
+  { tagId: 'tag_politics', name: '道法', color: '#C0392B' },
   { tagId: 'tag_other', name: '其他', color: '#7F8C8D' },
 ]
 
