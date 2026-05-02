@@ -302,47 +302,64 @@ MyTodos 是一个无需自建后端的协作待办应用。所有团队数据以
 
 **DB-REMOTE-001 meta.json**
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| schemaVersion | int | 数据结构版本号 |
-| workspace.workspaceId | UUID | 工作区唯一标识 |
-| workspace.name | string | 工作区名称 |
-| workspace.description | string | 工作区描述（可选） |
-| workspace.createdAt | datetime | 创建时间 |
-| workspace.updatedAt | datetime | 最后更新时间 |
-| members[] | array | 成员列表（2-5 人） |
-| members[].memberId | UUID | 成员唯一标识 |
-| members[].displayName | string | 成员显示名 |
-| members[].role | enum | 角色：admin / parent / student |
-| tags[] | array | 标签列表（上限 20 个） |
-| tags[].tagId | UUID | 标签唯一标识 |
-| tags[].name | string | 标签名称（1-20 字） |
-| tags[].color | string | 标签颜色（hex，可选） |
-| tags[].createdAt | datetime | 创建时间 |
-| revision.remoteRevision | string | 远端版本指纹（用于冲突检测） |
+```json
+{
+  "schemaVersion": 1,                         // int，数据结构版本号
+  "workspace": {
+    "workspaceId": "uuid",                    // UUID，工作区唯一标识
+    "name": "一中实验初中",                    // string，工作区名称
+    "description": "",                        // string，工作区描述（可选）
+    "createdAt": "2026-05-02T10:00:00Z",     // datetime，创建时间
+    "updatedAt": "2026-05-02T10:00:00Z"      // datetime，最后更新时间
+  },
+  "members": [                                // array，成员列表（2-5 人）
+    {
+      "memberId": "uuid",                    // UUID，成员唯一标识
+      "displayName": "张三",                  // string，成员显示名
+      "role": "parent"                       // enum，角色：admin / parent / student
+    }
+  ],
+  "tags": [                                   // array，标签列表（上限 20 个）
+    {
+      "tagId": "uuid",                       // UUID，标签唯一标识
+      "name": "学习",                         // string，标签名称（1-20 字）
+      "color": "#FF6B6B",                    // string，标签颜色（hex，可选）
+      "createdAt": "2026-05-02T10:00:00Z"   // datetime，创建时间
+    }
+  ],
+  "revision": {
+    "remoteRevision": "abc123..."            // string，远端版本指纹（用于冲突检测）
+  }
+}
+```
 
 **DB-REMOTE-002 todos.json**
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| tasks[] | array | 任务列表 |
-| tasks[].taskId | UUID | 任务唯一标识 |
-| tasks[].title | string | 标题（必填，1-80 字） |
-| tasks[].description | string | 详情描述（可选，1-256 字） |
-| tasks[].status | enum | 状态：todo / in_progress / done |
-| tasks[].priority | enum | 优先级：low / medium / high |
-| tasks[].dueAt | datetime | 截止日期时间（必填） |
-| tasks[].assigneeId | UUID | 指派人 memberId（只支持 1 个） |
-| tasks[].tagIds | UUID[] | 关联标签 ID 数组（可选） |
-| tasks[].startedAt | datetime | 开始时间（进行中时记录，可空） |
-| tasks[].createdAt | datetime | 创建时间 |
-| tasks[].createdBy | UUID | 创建人 memberId |
-| tasks[].updatedAt | datetime | 最后更新时间 |
-| tasks[].updatedBy | UUID | 最后更新人 memberId |
-| tasks[].completedAt | datetime | 完成时间（可空） |
-| tasks[].completedBy | UUID | 完成人 memberId（可空） |
-| tasks[].deletedAt | datetime | 删除时间（可空，逻辑删除标记） |
-| tasks[].deletedBy | UUID | 删除人 memberId（可空） |
+```json
+{
+  "tasks": [                                  // array，任务列表
+    {
+      "taskId": "uuid",                       // UUID，任务唯一标识
+      "title": "完成数学作业",                  // string，标题（必填，1-80 字）
+      "description": "第三章课后习题",           // string，详情描述（可选，1-256 字）
+      "status": "todo",                       // enum，状态：todo / in_progress / done
+      "priority": "medium",                   // enum，优先级：low / medium / high
+      "dueAt": "2026-05-03T18:00:00Z",       // datetime，截止日期时间（必填）
+      "assigneeId": "uuid",                   // UUID，指派人 memberId（只支持 1 个）
+      "tagIds": ["uuid"],                     // UUID[]，关联标签 ID 数组（可选）
+      "startedAt": null,                      // datetime，开始时间（进行中时记录，可空）
+      "createdAt": "2026-05-02T10:00:00Z",   // datetime，创建时间
+      "createdBy": "uuid",                    // UUID，创建人 memberId
+      "updatedAt": "2026-05-02T10:00:00Z",   // datetime，最后更新时间
+      "updatedBy": "uuid",                    // UUID，最后更新人 memberId
+      "completedAt": null,                    // datetime，完成时间（可空）
+      "completedBy": null,                    // UUID，完成人 memberId（可空）
+      "deletedAt": null,                      // datetime，删除时间（可空，逻辑删除标记）
+      "deletedBy": null                       // UUID，删除人 memberId（可空）
+    }
+  ]
+}
+```
 
 ### 6.3 数据一致性与并发控制
 
