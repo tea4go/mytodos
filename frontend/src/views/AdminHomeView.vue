@@ -1,6 +1,6 @@
 <template>
   <div class="admin-home-page">
-    <TopBar title="后台管理" :is-online="ui.isOnline" />
+    <TopBar title="后台管理" :is-online="ui.isOnline" :show-logout="true" @logout="logout" />
     <div class="content">
       <p class="role-info">当前身份：管理员（{{ currentDisplayName }}）</p>
       <div class="entries">
@@ -21,7 +21,6 @@
         </button>
       </div>
     </div>
-    <button class="logout-btn" @click="logout">退出登录</button>
     <LoadingSpinner :visible="ui.loading" text="加载中..." />
     <ErrorToast :message="ui.error" @close="ui.clearError()" />
   </div>
@@ -81,8 +80,4 @@ async function logout() {
 .entry-btn .icon { font-size: 24px; }
 .entry-btn .label { font-size: 16px; font-weight: 600; color: #333; }
 .entry-btn .desc { font-size: 13px; color: #666; }
-.logout-btn {
-  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
-  padding: 10px 32px; border: 1px solid #ddd; background: #fff; border-radius: 24px; cursor: pointer;
-}
 </style>

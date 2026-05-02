@@ -1,7 +1,15 @@
 <template>
   <div class="task-list-page">
-    <TopBar title="任务" :is-online="ui.isOnline" :show-logout="auth.role === 'student'" @logout="onLogout" />
-    <SearchBar v-model="taskStore.searchKeyword" />
+    <TopBar
+      title="任务"
+      :is-online="ui.isOnline"
+      :show-logout="auth.role === 'student' || auth.role === 'parent'"
+      :show-search="true"
+      :search-active="showSearch"
+      @logout="onLogout"
+      @toggle-search="showSearch = !showSearch"
+    />
+    <SearchBar v-if="showSearch" v-model="taskStore.searchKeyword" />
     <FilterBar v-if="auth.role" :role="auth.role" :filter="taskStore.filter" @update:filter="updateFilter" />
     <div class="list">
       <TaskItem
@@ -53,6 +61,7 @@ const ui = useUiStore()
 const route = useRoute()
 const router = useRouter()
 const showCreate = ref(false)
+const showSearch = ref(false)
 
 function emptyTask(): Task {
   const now = new Date().toISOString()
