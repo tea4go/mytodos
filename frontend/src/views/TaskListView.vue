@@ -1,7 +1,7 @@
 <template>
   <div class="task-list-page">
     <TopBar
-      title="任务"
+      :title="auth.role === 'parent' ? '分配任务' : '任务'"
       :is-online="ui.isOnline"
       :show-logout="auth.role === 'student' || auth.role === 'parent'"
       :show-search="true"
@@ -28,7 +28,7 @@
     <div v-if="showCreate" class="dialog-overlay" @click.self="showCreate = false">
       <div class="dialog">
         <h3>新建任务</h3>
-        <TaskEditForm :task="newTask" :members="wsStore.members" @save="handleCreate" @cancel="showCreate = false" />
+        <TaskEditForm :task="newTask" :members="wsStore.members" :hide-status="true" @save="handleCreate" @cancel="showCreate = false" />
       </div>
     </div>
     <LoadingSpinner :visible="ui.loading" text="保存中..." />
@@ -65,11 +65,15 @@ const showSearch = ref(false)
 
 function emptyTask(): Task {
   const now = new Date().toISOString()
+  const d = new Date()
+  d.setHours(21, 0, 0, 0)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const dueAt = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T21:00`
   return {
     taskId: `task_${Date.now()}`,
     title: '', description: '',
     status: 'todo', priority: 'medium',
-    dueAt: '', assigneeId: '',
+    dueAt, assigneeId: '',
     tagIds: [], startedAt: null,
     createdAt: now, createdBy: auth.currentMemberId ?? '',
     updatedAt: now, updatedBy: auth.currentMemberId ?? '',
@@ -80,6 +84,11 @@ function emptyTask(): Task {
 const newTask = ref<Task>(emptyTask())
 
 onMounted(async () => {
+  if (auth.role === 'student') {
+    taskStore.filter.dueDate = null
+    taskStore.filter.status = 'todo'
+    taskStore.filter.viewMode = 'active'
+  }
   if (wsStore.currentGistId) {
     try { await loadWorkspace(wsStore.currentGistId) } catch { /* error already shown */ }
   }

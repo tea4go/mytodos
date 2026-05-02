@@ -10,6 +10,14 @@
         <div class="info-row"><span>优先级</span><strong>{{ priorityText(task.priority) }}</strong></div>
         <div class="info-row"><span>截止</span><strong>{{ task.dueAt ? formatDateTime(task.dueAt) : '—' }}</strong></div>
         <div class="info-row"><span>指派</span><strong>{{ assigneeName }}</strong></div>
+        <div class="info-row">
+          <span>开始时间</span>
+          <strong>
+            {{ task.startedAt ? formatDateTime(task.startedAt) : '—' }}
+            <span v-if="task.startedAt" class="elapsed">{{ elapsedText }}</span>
+          </strong>
+        </div>
+        <div class="info-row"><span>完成时间</span><strong>{{ task.completedAt ? formatDateTime(task.completedAt) : '—' }}</strong></div>
 
         <div class="action-bar">
           <template v-if="auth.role === 'student' && task.assigneeId === auth.currentMemberId">
@@ -31,7 +39,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useWorkspaceStore } from '../stores/workspace'
@@ -55,6 +63,31 @@ const editing = ref(false)
 
 const task = computed(() => taskStore.tasks.find(t => t.taskId === route.params.taskId))
 const assigneeName = computed(() => wsStore.members.find(m => m.memberId === task.value?.assigneeId)?.displayName ?? '未指派')
+
+const nowTick = ref(Date.now())
+let timer: number | undefined
+onMounted(() => { timer = window.setInterval(() => { nowTick.value = Date.now() }, 60_000) })
+onUnmounted(() => { if (timer) window.clearInterval(timer) })
+
+function formatDuration(ms: number): string {
+  if (ms < 0) ms = 0
+  const min = Math.floor(ms / 60_000)
+  if (min < 60) return `${min}分钟`
+  const h = Math.floor(min / 60)
+  const m = min % 60
+  if (h < 24) return m === 0 ? `${h}小时` : `${h}小时${m}分钟`
+  const d = Math.floor(h / 24)
+  const rh = h % 24
+  return rh === 0 ? `${d}天` : `${d}天${rh}小时`
+}
+
+const elapsedText = computed(() => {
+  if (!task.value?.startedAt) return ''
+  const start = new Date(task.value.startedAt).getTime()
+  const end = task.value.completedAt ? new Date(task.value.completedAt).getTime() : nowTick.value
+  const label = task.value.completedAt ? '耗时' : '已过'
+  return `（${label}${formatDuration(end - start)}）`
+})
 
 onMounted(async () => {
   if (taskStore.tasks.length === 0 && wsStore.currentGistId) {
@@ -101,6 +134,7 @@ async function handleSave(updated: Task) {
 .desc { color: #666; line-height: 1.6; margin-bottom: 16px; }
 .info-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f0f0f0; }
 .info-row span { color: #999; }
+.info-row .elapsed { color: #999; font-weight: normal; margin-left: 6px; font-size: 13px; }
 .action-bar { display: flex; gap: 12px; margin-top: 24px; }
 .action-bar button { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 8px; background: #fff; cursor: pointer; font-size: 15px; }
 .action-bar button.primary { background: #4A90D9; color: #fff; border-color: #4A90D9; }

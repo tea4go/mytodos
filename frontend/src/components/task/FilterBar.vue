@@ -16,8 +16,9 @@
     </template>
     <template v-if="role === 'student'">
       <div class="view-switch">
-        <button :class="{ active: localFilter.viewMode === 'active' }" @click="setViewMode('active')">进行中</button>
-        <button :class="{ active: localFilter.viewMode === 'done' }" @click="setViewMode('done')">完成</button>
+        <button :class="{ active: localFilter.status === 'todo' }" @click="setStatus('todo')">待办</button>
+        <button :class="{ active: localFilter.status === 'doing' }" @click="setStatus('doing')">进行中</button>
+        <button :class="{ active: localFilter.status === 'done' }" @click="setStatus('done')">完成</button>
       </div>
     </template>
   </div>
@@ -25,7 +26,7 @@
 
 <script setup lang="ts">
 import { reactive, watch } from 'vue'
-import type { Role, TaskFilter } from '../../types'
+import type { Role, TaskFilter, TaskStatus } from '../../types'
 
 const props = defineProps<{ role: Role; filter: TaskFilter }>()
 const emit = defineEmits<{ 'update:filter': [filter: TaskFilter] }>()
@@ -34,7 +35,11 @@ const localFilter = reactive<TaskFilter>({ ...props.filter })
 watch(() => props.filter, f => Object.assign(localFilter, f))
 
 function emitFilter() { emit('update:filter', { ...localFilter }) }
-function setViewMode(mode: 'active' | 'done') { localFilter.viewMode = mode; emitFilter() }
+function setStatus(s: TaskStatus) {
+  localFilter.status = s
+  localFilter.viewMode = s === 'done' ? 'done' : 'active'
+  emitFilter()
+}
 </script>
 
 <style scoped>

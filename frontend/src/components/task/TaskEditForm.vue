@@ -10,7 +10,7 @@
         <option value="high">高</option>
       </select>
     </label>
-    <label>状态
+    <label v-if="!hideStatus">状态
       <select v-model="form.status">
         <option value="todo">待办</option>
         <option value="doing">进行中</option>
@@ -19,7 +19,7 @@
     </label>
     <label>指派人
       <select v-model="form.assigneeId">
-        <option v-for="m in members" :key="m.memberId" :value="m.memberId">{{ m.displayName }}</option>
+        <option v-for="m in studentMembers" :key="m.memberId" :value="m.memberId">{{ m.displayName }}</option>
       </select>
     </label>
     <div class="form-actions">
@@ -33,10 +33,11 @@
 import { reactive, computed } from 'vue'
 import type { Task, Member } from '../../types'
 
-const props = defineProps<{ task: Task; members: Member[] }>()
+const props = defineProps<{ task: Task; members: Member[]; hideStatus?: boolean }>()
 const emit = defineEmits<{ save: [task: Task]; cancel: [] }>()
 
 const form = reactive<Task>({ ...props.task })
+const studentMembers = computed(() => props.members.filter(m => m.role === 'student'))
 const valid = computed(() => form.title.trim().length > 0)
 
 function submit() { emit('save', { ...form }) }

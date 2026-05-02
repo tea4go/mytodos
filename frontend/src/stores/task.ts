@@ -4,13 +4,14 @@ import type { Task, TaskFilter } from '../types'
 import { sortTasks } from '../utils/sort'
 import { filterTasks } from '../utils/filter'
 import { searchTasks } from '../utils/search'
+import { useAuthStore } from './auth'
 
 export const useTaskStore = defineStore('task', () => {
   const tasks = ref<Task[]>([])
   const filter = ref<TaskFilter>({
-    status: null,
+    status: 'todo',
     assigneeId: null,
-    dueDate: null,
+    dueDate: 'today',
     tagIds: [],
     viewMode: 'active',
   })
@@ -29,7 +30,11 @@ export const useTaskStore = defineStore('task', () => {
   }
 
   const filteredTasks = computed(() => {
+    const auth = useAuthStore()
     let result = tasks.value.filter(t => !t.deletedAt)
+    if (auth.role === 'student') {
+      result = result.filter(t => t.assigneeId === auth.currentMemberId)
+    }
     result = filterTasks(result, filter.value)
     result = searchTasks(result, searchKeyword.value)
     return sortTasks(result)
