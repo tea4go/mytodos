@@ -14,7 +14,7 @@
 
 ```
 mytodos/
-├── src/                              // Vue 3 前端
+├── frontend/src/                              // Vue 3 前端
 │   ├── main.ts                       // 入口，挂载 app
 │   ├── App.vue                       // 根组件
 │   ├── router/index.ts               // 路由定义 + 守卫
@@ -45,8 +45,8 @@ mytodos/
 │   │   ├── tag/                     // TagList, TagEditDialog
 │   │   └── member/                  // MemberList, MemberEditDialog
 │   └── assets/styles/main.css
-├── src-tauri/                        // Rust 后端
-│   ├── src/
+├── backend/src-tauri/                        // Rust 后端
+│   ├── frontend/src/
 │   │   ├── main.rs                   // Tauri 入口
 │   │   ├── lib.rs                    // 库入口，注册命令
 │   │   ├── commands/
@@ -74,7 +74,7 @@ mytodos/
 - [ ] **步骤 1：创建 Tauri 2 + Vue 3 + TS 项目**
 
 ```bash
-npm create tauri-app@latest mytodos -- --template vue-ts
+pnpm create tauri-app@latest mytodos -- --template vue-ts
 # 选择: Tauri 2, Vue, TypeScript, Vite
 ```
 
@@ -82,14 +82,14 @@ npm create tauri-app@latest mytodos -- --template vue-ts
 
 ```bash
 cd mytodos
-npm install pinia vue-router@4
-npm install -D @types/node
+pnpm --filter mytodos-frontend add pinia vue-router@4
+pnpm --filter mytodos-frontend add -D @types/node
 ```
 
 - [ ] **步骤 3：验证脚手架可运行**
 
 ```bash
-npm run tauri dev
+pnpm tauri dev
 # 预期：桌面窗口打开，显示默认 Vue 页面
 ```
 
@@ -107,12 +107,12 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 ### 任务 1.2：创建 TypeScript 类型定义
 
 **文件：**
-- 创建：`src/types/index.ts`
+- 创建：`frontend/src/types/index.ts`
 
 - [ ] **步骤 1：编写完整类型定义**
 
 ```typescript
-// src/types/index.ts
+// frontend/src/types/index.ts
 
 // ===== 枚举 =====
 export type Role = 'admin' | 'parent' | 'student'
@@ -207,14 +207,14 @@ export type SortRule = 'default'  // 逾期优先 → 截止升序 → 创建降
 - [ ] **步骤 2：验证 TypeScript 编译**
 
 ```bash
-npx tsc --noEmit
+pnpm --filter mytodos-frontend exec vue-tsc --noEmit
 # 预期：无错误
 ```
 
 - [ ] **步骤 3：Commit**
 
 ```bash
-git add src/types/index.ts
+git add frontend/src/types/index.ts
 git commit -m "feat: add TypeScript type definitions
 
 Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
@@ -225,15 +225,15 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 ### 任务 1.3：创建工具函数
 
 **文件：**
-- 创建：`src/utils/date.ts`
-- 创建：`src/utils/sort.ts`
-- 创建：`src/utils/filter.ts`
-- 创建：`src/utils/search.ts`
+- 创建：`frontend/src/utils/date.ts`
+- 创建：`frontend/src/utils/sort.ts`
+- 创建：`frontend/src/utils/filter.ts`
+- 创建：`frontend/src/utils/search.ts`
 
 - [ ] **步骤 1：日期工具**
 
 ```typescript
-// src/utils/date.ts
+// frontend/src/utils/date.ts
 export function isSameDay(a: Date, b: Date): boolean {
   return a.getFullYear() === b.getFullYear()
     && a.getMonth() === b.getMonth()
@@ -263,7 +263,7 @@ export function formatDateTime(iso: string): string {
 - [ ] **步骤 2：排序工具**
 
 ```typescript
-// src/utils/sort.ts
+// frontend/src/utils/sort.ts
 import type { Task } from '../types'
 
 export function sortTasks(tasks: Task[]): Task[] {
@@ -289,7 +289,7 @@ export function sortTasks(tasks: Task[]): Task[] {
 - [ ] **步骤 3：筛选工具**
 
 ```typescript
-// src/utils/filter.ts
+// frontend/src/utils/filter.ts
 import type { Task, TaskFilter } from '../types'
 import { isSameDay, addDays, isOverdue } from './date'
 
@@ -341,7 +341,7 @@ export function filterTasks(tasks: Task[], filter: TaskFilter): Task[] {
 - [ ] **步骤 4：搜索工具**
 
 ```typescript
-// src/utils/search.ts
+// frontend/src/utils/search.ts
 import type { Task } from '../types'
 
 export function searchTasks(tasks: Task[], keyword: string): Task[] {
@@ -357,14 +357,14 @@ export function searchTasks(tasks: Task[], keyword: string): Task[] {
 - [ ] **步骤 5：验证编译**
 
 ```bash
-npx tsc --noEmit
+pnpm --filter mytodos-frontend exec vue-tsc --noEmit
 # 预期：无错误
 ```
 
 - [ ] **步骤 6：Commit**
 
 ```bash
-git add src/utils/
+git add frontend/src/utils/
 git commit -m "feat: add utility functions (sort, filter, search, date)
 
 Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
@@ -377,14 +377,14 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 ### 任务 2.1：配置 Rust 依赖与 .env 读取
 
 **文件：**
-- 修改：`src-tauri/Cargo.toml`
-- 创建：`src-tauri/.env`
-- 创建：`src-tauri/src/config.rs`
+- 修改：`backend/src-tauri/Cargo.toml`
+- 创建：`backend/src-tauri/.env`
+- 创建：`backend/src-tauri/src/config.rs`
 
 - [ ] **步骤 1：添加 Cargo 依赖**
 
 ```toml
-# src-tauri/Cargo.toml — 在 [dependencies] 中添加
+# backend/src-tauri/Cargo.toml — 在 [dependencies] 中添加
 reqwest = { version = "0.12", features = ["json"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -397,14 +397,14 @@ tauri-plugin-shell = "2"
 - [ ] **步骤 2：创建 .env 模板**
 
 ```bash
-# src-tauri/.env
+# backend/src-tauri/.env
 GITEE_PAT=your_personal_access_token_here
 ```
 
 - [ ] **步骤 3：创建 config.rs**
 
 ```rust
-// src-tauri/src/config.rs
+// backend/src-tauri/src/config.rs
 use std::env;
 
 pub struct AppConfig {
@@ -429,7 +429,7 @@ impl AppConfig {
 - [ ] **步骤 4：Commit**
 
 ```bash
-git add src-tauri/Cargo.toml src-tauri/.env src-tauri/src/config.rs
+git add backend/src-tauri/Cargo.toml backend/src-tauri/.env backend/src-tauri/src/config.rs
 git commit -m "feat: add Rust dependencies and env config
 
 Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
@@ -440,13 +440,13 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 ### 任务 2.2：实现 Gitee API 客户端
 
 **文件：**
-- 创建：`src-tauri/src/commands/mod.rs`
-- 创建：`src-tauri/src/commands/gist.rs`
+- 创建：`backend/src-tauri/src/commands/mod.rs`
+- 创建：`backend/src-tauri/src/commands/gist.rs`
 
 - [ ] **步骤 1：创建 commands 模块**
 
 ```rust
-// src-tauri/src/commands/mod.rs
+// backend/src-tauri/src/commands/mod.rs
 pub mod gist;
 pub mod secure_store;
 ```
@@ -454,7 +454,7 @@ pub mod secure_store;
 - [ ] **步骤 2：实现 Gist API 命令**
 
 ```rust
-// src-tauri/src/commands/gist.rs
+// backend/src-tauri/src/commands/gist.rs
 use crate::config::AppConfig;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -602,15 +602,13 @@ pub async fn gist_update(gist_id: String, files: HashMap<String, String>) -> Res
 - [ ] **步骤 3：注册命令到 main.rs**
 
 ```rust
-// src-tauri/src/main.rs — 修改为：
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-
+// backend/src-tauri/src/lib.rs — 修改为（Tauri 2 推荐入口）：
 mod config;
 mod commands;
 
 use commands::gist;
 
-fn main() {
+pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![
@@ -633,7 +631,7 @@ cd src-tauri && cargo check
 - [ ] **步骤 5：Commit**
 
 ```bash
-git add src-tauri/src/main.rs src-tauri/src/commands/ src-tauri/src/config.rs
+git add backend/src-tauri/src/main.rs backend/src-tauri/src/commands/ backend/src-tauri/src/config.rs
 git commit -m "feat: implement Gitee API client commands
 
 Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
@@ -644,12 +642,12 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 ### 任务 2.3：实现安全存储命令
 
 **文件：**
-- 创建：`src-tauri/src/commands/secure_store.rs`
+- 创建：`backend/src-tauri/src/commands/secure_store.rs`
 
 - [ ] **步骤 1：实现安全存储**
 
 ```rust
-// src-tauri/src/commands/secure_store.rs
+// backend/src-tauri/src/commands/secure_store.rs
 use std::collections::HashMap;
 use std::sync::Mutex;
 
@@ -682,14 +680,14 @@ pub async fn secure_remove(key: String) -> Result<(), String> {
 - [ ] **步骤 2：添加 once_cell 依赖**
 
 ```toml
-# src-tauri/Cargo.toml — 在 [dependencies] 中追加
+# backend/src-tauri/Cargo.toml — 在 [dependencies] 中追加
 once_cell = "1"
 ```
 
 - [ ] **步骤 3：注册到 main.rs**
 
 ```rust
-// src-tauri/src/main.rs — 修改 invoke_handler 部分：
+// backend/src-tauri/src/main.rs — 修改 invoke_handler 部分：
 use commands::{gist, secure_store};
 
 .invoke_handler(tauri::generate_handler![
@@ -711,7 +709,7 @@ cd src-tauri && cargo check
 - [ ] **步骤 5：Commit**
 
 ```bash
-git add src-tauri/
+git add backend/src-tauri/
 git commit -m "feat: add secure storage commands
 
 Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
@@ -724,16 +722,16 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 ### 任务 3.1：创建 Pinia Stores
 
 **文件：**
-- 创建：`src/stores/auth.ts`
-- 创建：`src/stores/ui.ts`
-- 创建：`src/stores/workspace.ts`
-- 创建：`src/stores/task.ts`
-- 创建：`src/stores/tag.ts`
+- 创建：`frontend/src/stores/auth.ts`
+- 创建：`frontend/src/stores/ui.ts`
+- 创建：`frontend/src/stores/workspace.ts`
+- 创建：`frontend/src/stores/task.ts`
+- 创建：`frontend/src/stores/tag.ts`
 
 - [ ] **步骤 1：auth Store**
 
 ```typescript
-// src/stores/auth.ts
+// frontend/src/stores/auth.ts
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { Role } from '../types'
@@ -796,7 +794,7 @@ export const useAuthStore = defineStore('auth', () => {
 - [ ] **步骤 2：ui Store**
 
 ```typescript
-// src/stores/ui.ts
+// frontend/src/stores/ui.ts
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
@@ -823,7 +821,7 @@ export const useUiStore = defineStore('ui', () => {
 - [ ] **步骤 3：workspace Store**
 
 ```typescript
-// src/stores/workspace.ts
+// frontend/src/stores/workspace.ts
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { WorkspaceMeta, Member, Tag } from '../types'
@@ -869,7 +867,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
 - [ ] **步骤 4：task Store**
 
 ```typescript
-// src/stores/task.ts
+// frontend/src/stores/task.ts
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { Task, TaskFilter, TaskStatus, Priority } from '../types'
@@ -914,7 +912,7 @@ export const useTaskStore = defineStore('task', () => {
 - [ ] **步骤 5：tag Store**
 
 ```typescript
-// src/stores/tag.ts
+// frontend/src/stores/tag.ts
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { Tag } from '../types'
@@ -939,13 +937,13 @@ export const useTagStore = defineStore('tag', () => {
 - [ ] **步骤 6：验证编译**
 
 ```bash
-npx tsc --noEmit
+pnpm --filter mytodos-frontend exec vue-tsc --noEmit
 ```
 
 - [ ] **步骤 7：Commit**
 
 ```bash
-git add src/stores/
+git add frontend/src/stores/
 git commit -m "feat: add Pinia stores (auth, ui, workspace, task, tag)
 
 Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
@@ -956,13 +954,13 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 ### 任务 3.2：配置路由与守卫
 
 **文件：**
-- 创建：`src/router/index.ts`
-- 修改：`src/main.ts`
+- 创建：`frontend/src/router/index.ts`
+- 修改：`frontend/src/main.ts`
 
 - [ ] **步骤 1：创建路由**
 
 ```typescript
-// src/router/index.ts
+// frontend/src/router/index.ts
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 
@@ -1048,7 +1046,7 @@ export default router
 - [ ] **步骤 2：修改 main.ts**
 
 ```typescript
-// src/main.ts
+// frontend/src/main.ts
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import App from './App.vue'
@@ -1064,7 +1062,7 @@ app.mount('#app')
 - [ ] **步骤 3：修改 App.vue**
 
 ```vue
-<!-- src/App.vue -->
+<!-- frontend/src/App.vue -->
 <template>
   <router-view />
 </template>
@@ -1076,13 +1074,13 @@ app.mount('#app')
 - [ ] **步骤 4：验证编译**
 
 ```bash
-npx tsc --noEmit
+pnpm --filter mytodos-frontend exec vue-tsc --noEmit
 ```
 
 - [ ] **步骤 5：Commit**
 
 ```bash
-git add src/router/ src/main.ts src/App.vue
+git add frontend/src/router/ frontend/src/main.ts frontend/src/App.vue
 git commit -m "feat: configure Vue Router with role-based guards
 
 Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
@@ -1095,16 +1093,16 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 ### 任务 4.1：引导页与公共组件
 
 **文件：**
-- 创建：`src/views/GuideView.vue`
-- 创建：`src/components/guide/RoleSelector.vue`
-- 创建：`src/components/guide/PasswordInput.vue`
-- 创建：`src/components/common/ErrorToast.vue`
-- 创建：`src/components/common/LoadingSpinner.vue`
+- 创建：`frontend/src/views/GuideView.vue`
+- 创建：`frontend/src/components/guide/RoleSelector.vue`
+- 创建：`frontend/src/components/guide/PasswordInput.vue`
+- 创建：`frontend/src/components/common/ErrorToast.vue`
+- 创建：`frontend/src/components/common/LoadingSpinner.vue`
 
 - [ ] **步骤 1：RoleSelector 组件**
 
 ```vue
-<!-- src/components/guide/RoleSelector.vue -->
+<!-- frontend/src/components/guide/RoleSelector.vue -->
 <template>
   <div class="role-selector">
     <h2>选择角色</h2>
@@ -1151,7 +1149,7 @@ const roles = [
 - [ ] **步骤 2：PasswordInput 组件**
 
 ```vue
-<!-- src/components/guide/PasswordInput.vue -->
+<!-- frontend/src/components/guide/PasswordInput.vue -->
 <template>
   <div class="password-input">
     <h2>输入口令</h2>
@@ -1213,7 +1211,7 @@ function remove() {
 - [ ] **步骤 3：ErrorToast 和 LoadingSpinner**
 
 ```vue
-<!-- src/components/common/ErrorToast.vue -->
+<!-- frontend/src/components/common/ErrorToast.vue -->
 <template>
   <Transition name="fade">
     <div v-if="message" class="error-toast" @click="$emit('close')">
@@ -1237,7 +1235,7 @@ defineEmits<{ close: [] }>()
 ```
 
 ```vue
-<!-- src/components/common/LoadingSpinner.vue -->
+<!-- frontend/src/components/common/LoadingSpinner.vue -->
 <template>
   <div v-if="visible" class="loading-overlay">
     <div class="spinner" />
@@ -1265,7 +1263,7 @@ defineProps<{ visible: boolean; text?: string }>()
 - [ ] **步骤 4：GuideView 组装**
 
 ```vue
-<!-- src/views/GuideView.vue -->
+<!-- frontend/src/views/GuideView.vue -->
 <template>
   <div class="guide-page">
     <h1>MyTodos</h1>
@@ -1319,7 +1317,7 @@ h1 { font-size: 28px; color: #4A90D9; margin-bottom: 32px; }
 - [ ] **步骤 5：Commit**
 
 ```bash
-git add src/views/GuideView.vue src/components/guide/ src/components/common/
+git add frontend/src/views/GuideView.vue frontend/src/components/guide/ frontend/src/components/common/
 git commit -m "feat: implement guide page with role selector and password input
 
 Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
@@ -1330,14 +1328,14 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 ### 任务 4.2：工作区列表页
 
 **文件：**
-- 创建：`src/views/WorkspaceListView.vue`
-- 创建：`src/components/workspace/WorkspaceCard.vue`
-- 创建：`src/components/workspace/CreateWorkspaceDialog.vue`
+- 创建：`frontend/src/views/WorkspaceListView.vue`
+- 创建：`frontend/src/components/workspace/WorkspaceCard.vue`
+- 创建：`frontend/src/components/workspace/CreateWorkspaceDialog.vue`
 
 - [ ] **步骤 1：WorkspaceCard 组件**
 
 ```vue
-<!-- src/components/workspace/WorkspaceCard.vue -->
+<!-- frontend/src/components/workspace/WorkspaceCard.vue -->
 <template>
   <div class="workspace-card" @click="$emit('select', workspace.workspace.workspaceId)">
     <div class="ws-info">
@@ -1373,7 +1371,7 @@ defineEmits<{ select: [workspaceId: string]; edit: [workspace: WorkspaceMeta] }>
 - [ ] **步骤 2：CreateWorkspaceDialog 组件**
 
 ```vue
-<!-- src/components/workspace/CreateWorkspaceDialog.vue -->
+<!-- frontend/src/components/workspace/CreateWorkspaceDialog.vue -->
 <template>
   <div v-if="visible" class="dialog-overlay" @click.self="$emit('close')">
     <div class="dialog">
@@ -1434,7 +1432,7 @@ function submit() {
 - [ ] **步骤 3：WorkspaceListView 组装**
 
 ```vue
-<!-- src/views/WorkspaceListView.vue -->
+<!-- frontend/src/views/WorkspaceListView.vue -->
 <template>
   <div class="ws-list-page">
     <h2>工作区</h2>
@@ -1505,7 +1503,7 @@ async function handleCreate(data: { name: string; description: string; passwords
 - [ ] **步骤 4：Commit**
 
 ```bash
-git add src/views/WorkspaceListView.vue src/components/workspace/
+git add frontend/src/views/WorkspaceListView.vue frontend/src/components/workspace/
 git commit -m "feat: implement workspace list and create dialog
 
 Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
@@ -1516,17 +1514,17 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 ### 任务 4.3：任务列表页（核心页面）
 
 **文件：**
-- 创建：`src/views/TaskListView.vue`
-- 创建：`src/components/common/TopBar.vue`
-- 创建：`src/components/common/SearchBar.vue`
-- 创建：`src/components/task/FilterBar.vue`
-- 创建：`src/components/task/TaskItem.vue`
-- 创建：`src/components/task/AddTaskButton.vue`
+- 创建：`frontend/src/views/TaskListView.vue`
+- 创建：`frontend/src/components/common/TopBar.vue`
+- 创建：`frontend/src/components/common/SearchBar.vue`
+- 创建：`frontend/src/components/task/FilterBar.vue`
+- 创建：`frontend/src/components/task/TaskItem.vue`
+- 创建：`frontend/src/components/task/AddTaskButton.vue`
 
 - [ ] **步骤 1：TopBar 组件**
 
 ```vue
-<!-- src/components/common/TopBar.vue -->
+<!-- frontend/src/components/common/TopBar.vue -->
 <template>
   <div class="top-bar">
     <button v-if="showBack" @click="$router.back()" class="back-btn">←</button>
@@ -1552,7 +1550,7 @@ defineProps<{ title: string; showBack?: boolean; isOnline: boolean }>()
 - [ ] **步骤 2：SearchBar 组件**
 
 ```vue
-<!-- src/components/common/SearchBar.vue -->
+<!-- frontend/src/components/common/SearchBar.vue -->
 <template>
   <div class="search-bar">
     <input
@@ -1586,7 +1584,7 @@ function clear() { keyword.value = ''; emit('update:modelValue', '') }
 - [ ] **步骤 3：TaskItem 组件**
 
 ```vue
-<!-- src/components/task/TaskItem.vue -->
+<!-- frontend/src/components/task/TaskItem.vue -->
 <template>
   <div
     :class="['task-item', `priority-${task.priority}`]"
@@ -1663,7 +1661,7 @@ const statusText = computed(() => {
 - [ ] **步骤 4：FilterBar 组件**
 
 ```vue
-<!-- src/components/task/FilterBar.vue -->
+<!-- frontend/src/components/task/FilterBar.vue -->
 <template>
   <div class="filter-bar">
     <!-- 家长筛选 -->
@@ -1721,7 +1719,7 @@ function setViewMode(mode: 'active' | 'done') {
 - [ ] **步骤 5：AddTaskButton 组件**
 
 ```vue
-<!-- src/components/task/AddTaskButton.vue -->
+<!-- frontend/src/components/task/AddTaskButton.vue -->
 <template>
   <button @click="$emit('click')" class="add-btn">+</button>
 </template>
@@ -1740,7 +1738,7 @@ defineEmits<{ click: [] }>()
 - [ ] **步骤 6：TaskListView 组装**
 
 ```vue
-<!-- src/views/TaskListView.vue -->
+<!-- frontend/src/views/TaskListView.vue -->
 <template>
   <div class="task-list-page">
     <TopBar :title="wsStore.meta?.workspace.name ?? '任务'" :is-online="ui.isOnline" show-back />
@@ -1853,7 +1851,7 @@ async function handleCreate() { /* TODO: 阶段五集成 */ }
 - [ ] **步骤 7：Commit**
 
 ```bash
-git add src/views/TaskListView.vue src/components/common/ src/components/task/
+git add frontend/src/views/TaskListView.vue frontend/src/components/common/ frontend/src/components/task/
 git commit -m "feat: implement task list with search, filter, and create dialog
 
 Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
@@ -1864,13 +1862,13 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 ### 任务 4.4：任务详情页
 
 **文件：**
-- 创建：`src/views/TaskDetailView.vue`
-- 创建：`src/components/task/TaskEditForm.vue`
+- 创建：`frontend/src/views/TaskDetailView.vue`
+- 创建：`frontend/src/components/task/TaskEditForm.vue`
 
 - [ ] **步骤 1：TaskEditForm 组件**
 
 ```vue
-<!-- src/components/task/TaskEditForm.vue -->
+<!-- frontend/src/components/task/TaskEditForm.vue -->
 <template>
   <div class="task-edit-form">
     <label>标题 <input v-model="form.title" maxlength="80" /></label>
@@ -1928,7 +1926,7 @@ function submit() { emit('save', { ...form }) }
 - [ ] **步骤 2：TaskDetailView**
 
 ```vue
-<!-- src/views/TaskDetailView.vue -->
+<!-- frontend/src/views/TaskDetailView.vue -->
 <template>
   <div class="detail-page">
     <TopBar title="任务详情" :is-online="ui.isOnline" show-back />
@@ -2031,7 +2029,7 @@ async function handleSave(updated: Task) { /* TODO: 阶段五集成 */ }
 - [ ] **步骤 3：Commit**
 
 ```bash
-git add src/views/TaskDetailView.vue src/components/task/TaskEditForm.vue
+git add frontend/src/views/TaskDetailView.vue frontend/src/components/task/TaskEditForm.vue
 git commit -m "feat: implement task detail view with edit form
 
 Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
@@ -2042,17 +2040,17 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 ### 任务 4.5：标签管理页与成员管理页
 
 **文件：**
-- 创建：`src/views/TagManageView.vue`
-- 创建：`src/components/tag/TagList.vue`
-- 创建：`src/components/tag/TagEditDialog.vue`
-- 创建：`src/views/MemberManageView.vue`
-- 创建：`src/components/member/MemberList.vue`
-- 创建：`src/components/member/MemberEditDialog.vue`
+- 创建：`frontend/src/views/TagManageView.vue`
+- 创建：`frontend/src/components/tag/TagList.vue`
+- 创建：`frontend/src/components/tag/TagEditDialog.vue`
+- 创建：`frontend/src/views/MemberManageView.vue`
+- 创建：`frontend/src/components/member/MemberList.vue`
+- 创建：`frontend/src/components/member/MemberEditDialog.vue`
 
 - [ ] **步骤 1：标签管理相关组件**
 
 ```vue
-<!-- src/components/tag/TagEditDialog.vue -->
+<!-- frontend/src/components/tag/TagEditDialog.vue -->
 <template>
   <div v-if="visible" class="dialog-overlay" @click.self="$emit('close')">
     <div class="dialog">
@@ -2094,7 +2092,7 @@ function submit() { emit('save', { name: name.value.trim(), color: color.value }
 ```
 
 ```vue
-<!-- src/components/tag/TagList.vue -->
+<!-- frontend/src/components/tag/TagList.vue -->
 <template>
   <div class="tag-list">
     <div v-for="tag in tags" :key="tag.tagId" class="tag-row">
@@ -2124,7 +2122,7 @@ defineEmits<{ edit: [tag: Tag]; delete: [tagId: string] }>()
 ```
 
 ```vue
-<!-- src/views/TagManageView.vue -->
+<!-- frontend/src/views/TagManageView.vue -->
 <template>
   <div class="tag-manage-page">
     <TopBar title="标签管理" :is-online="ui.isOnline" show-back />
@@ -2175,7 +2173,7 @@ function handleDelete(tagId: string) { /* TODO: 阶段五 */ }
 - [ ] **步骤 2：成员管理相关组件 — 简化版，结构同标签管理**
 
 ```vue
-<!-- src/components/member/MemberList.vue -->
+<!-- frontend/src/components/member/MemberList.vue -->
 <template>
   <div class="member-list">
     <div v-for="m in members" :key="m.memberId" class="member-row">
@@ -2209,7 +2207,7 @@ function roleText(r: Role) { switch(r) { case 'admin': return '管理员'; case 
 - [ ] **步骤 3：Commit**
 
 ```bash
-git add src/views/TagManageView.vue src/views/MemberManageView.vue src/components/tag/ src/components/member/
+git add frontend/src/views/TagManageView.vue frontend/src/views/MemberManageView.vue frontend/src/components/tag/ frontend/src/components/member/
 git commit -m "feat: implement tag management and member management pages
 
 Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
@@ -2222,12 +2220,12 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 ### 任务 5.1：创建 API 服务层
 
 **文件：**
-- 创建：`src/services/api.ts`
+- 创建：`frontend/src/services/api.ts`
 
 - [ ] **步骤 1：API 服务封装**
 
 ```typescript
-// src/services/api.ts
+// frontend/src/services/api.ts
 import type { WorkspaceMeta } from '../types'
 
 // Tauri invoke 包装
@@ -2290,7 +2288,7 @@ export function serializeTasks(tasks: any[]): string {
 - [ ] **步骤 2：Commit**
 
 ```bash
-git add src/services/api.ts
+git add frontend/src/services/api.ts
 git commit -m "feat: add API service layer for Gitee and secure storage
 
 Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
@@ -2301,7 +2299,7 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 ### 任务 5.2：工作区创建集成
 
 **文件：**
-- 修改：`src/views/WorkspaceListView.vue`
+- 修改：`frontend/src/views/WorkspaceListView.vue`
 
 - [ ] **步骤 1：实现 createWorkspace 函数**
 
@@ -2368,7 +2366,7 @@ async function handleCreate(data: { name: string; description: string; passwords
 - [ ] **步骤 2：Commit**
 
 ```bash
-git add src/views/WorkspaceListView.vue
+git add frontend/src/views/WorkspaceListView.vue
 git commit -m "feat: integrate workspace creation with Gitee API
 
 Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
@@ -2379,8 +2377,8 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 ### 任务 5.3：任务 CRUD 集成
 
 **文件：**
-- 修改：`src/views/TaskListView.vue` — 完善 handleCreate
-- 修改：`src/views/TaskDetailView.vue` — 完善 handleAction 和 handleSave
+- 修改：`frontend/src/views/TaskListView.vue` — 完善 handleCreate
+- 修改：`frontend/src/views/TaskDetailView.vue` — 完善 handleAction 和 handleSave
 
 - [ ] **步骤 1：实现任务创建**
 
@@ -2495,7 +2493,7 @@ async function saveTaskUpdate(taskId: string, updates: Partial<Task>) {
 - [ ] **步骤 4：Commit**
 
 ```bash
-git add src/views/TaskListView.vue src/views/TaskDetailView.vue
+git add frontend/src/views/TaskListView.vue frontend/src/views/TaskDetailView.vue
 git commit -m "feat: integrate task CRUD with Gitee API
 
 Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
@@ -2506,12 +2504,12 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 ### 任务 5.4：工作区加载与数据同步
 
 **文件：**
-- 创建：`src/services/sync.ts`
+- 创建：`frontend/src/services/sync.ts`
 
 - [ ] **步骤 1：同步服务**
 
 ```typescript
-// src/services/sync.ts
+// frontend/src/services/sync.ts
 import { fetchGist, parseMetaFromGist, parseTasksFromGist } from './api'
 import { useWorkspaceStore } from '../stores/workspace'
 import { useTaskStore } from '../stores/task'
@@ -2555,7 +2553,7 @@ if (to.params.id && to.name !== 'Guide') {
 - [ ] **步骤 3：Commit**
 
 ```bash
-git add src/services/sync.ts src/router/index.ts
+git add frontend/src/services/sync.ts frontend/src/router/index.ts
 git commit -m "feat: add workspace loading and data sync
 
 Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
@@ -2568,12 +2566,12 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 ### 任务 6.1：全局样式
 
 **文件：**
-- 创建：`src/assets/styles/main.css`
+- 创建：`frontend/src/assets/styles/main.css`
 
 - [ ] **步骤 1：移动端全局样式**
 
 ```css
-/* src/assets/styles/main.css */
+/* frontend/src/assets/styles/main.css */
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif; }
 body { background: #f8f9fa; color: #333; -webkit-font-smoothing: antialiased; }
@@ -2591,7 +2589,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 - [ ] **步骤 2：Commit**
 
 ```bash
-git add src/assets/styles/main.css
+git add frontend/src/assets/styles/main.css
 git commit -m "style: add global mobile-first styles
 
 Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
@@ -2604,7 +2602,7 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 - [ ] **步骤 1：TypeScript 编译检查**
 
 ```bash
-npx tsc --noEmit
+pnpm --filter mytodos-frontend exec vue-tsc --noEmit
 # 预期：无错误
 ```
 
@@ -2618,14 +2616,14 @@ cd src-tauri && cargo check
 - [ ] **步骤 3：Vite 构建检查**
 
 ```bash
-npm run build
+pnpm build
 # 预期：构建成功
 ```
 
 - [ ] **步骤 4：Tauri 构建**
 
 ```bash
-npm run tauri build
+pnpm tauri build
 # 预期：生成 APK/IPA/桌面安装包
 ```
 

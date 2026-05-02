@@ -1,6 +1,19 @@
+mod commands;
+mod config;
+
+use commands::{gist, secure_store};
+
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .invoke_handler(tauri::generate_handler![
+            gist::gist_get,
+            gist::gist_create,
+            gist::gist_update,
+            secure_store::secure_store,
+            secure_store::secure_get,
+            secure_store::secure_remove,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
