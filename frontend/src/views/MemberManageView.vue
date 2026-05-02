@@ -37,12 +37,24 @@ onMounted(async () => {
 function onNew() { editingMember.value = null; dialogVisible.value = true }
 function onEdit(m: Member) { editingMember.value = m; dialogVisible.value = true }
 
-async function onSave(data: { displayName: string; role: Role }) {
+async function onSave(data: { displayName: string; role: Role; password?: string }) {
   if (!wsStore.meta || !wsStore.currentGistId) return
   const now = new Date().toISOString()
   const newMembers = editingMember.value
-    ? wsStore.meta.members.map(m => m.memberId === editingMember.value!.memberId ? { ...m, ...data } : m)
-    : [...wsStore.meta.members, { memberId: `m_${Date.now()}`, displayName: data.displayName, role: data.role }]
+    ? wsStore.meta.members.map(m =>
+        m.memberId === editingMember.value!.memberId
+          ? { ...m, displayName: data.displayName, role: data.role, ...(data.password ? { password: data.password } : {}) }
+          : m,
+      )
+    : [
+        ...wsStore.meta.members,
+        {
+          memberId: `m_${Date.now()}`,
+          displayName: data.displayName,
+          role: data.role,
+          password: data.password ?? '',
+        },
+      ]
   const newMeta: WorkspaceMeta = { ...wsStore.meta, members: newMembers, workspace: { ...wsStore.meta.workspace, updatedAt: now } }
   await saveMeta(wsStore.currentGistId, newMeta)
   dialogVisible.value = false

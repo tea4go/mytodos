@@ -45,7 +45,7 @@
 | UI 组件 | 自研 / 轻量组件库 | 移动端优先 |
 | 桌面壳 | Tauri 2 | Rust 后端 + WebView |
 | HTTP | Tauri HTTP Plugin / fetch | Gitee API 调用 |
-| 安全存储 | Tauri Plugin (keyring/secure-store) | PAT、口令、workspaceKey |
+| 安全存储 | Tauri Plugin (keyring/secure-store) | PAT、成员密码、workspaceKey |
 | 构建 | Vite | 前端打包 |
 
 ---
@@ -68,11 +68,12 @@
 
 ```
 Router.beforeEach(to, from, next):
-  1. 检查本地安全存储是否有 role
+  1. 检查本地安全存储是否有 currentMemberId（身份凭证）
      - 无 → 跳转 /guide
-  2. 检查 to.meta.roles 是否包含当前 role
+  2. 从已加载工作区的 meta 中查到该 member，得到 role
+  3. 检查 to.meta.roles 是否包含当前 role
      - 否 → 跳转角色默认页
-  3. 通过
+  4. 通过
 ```
 
 ### 3.3 角色默认页
@@ -91,7 +92,7 @@ Router.beforeEach(to, from, next):
 
 ```
 stores/
-├── auth.ts          // 角色、口令、当前用户
+├── auth.ts          // 当前成员、密码、登录态（角色由 member.role 派生）
 ├── workspace.ts     // 工作区列表、当前工作区、meta 数据
 ├── task.ts          // 任务列表、筛选条件、排序、搜索
 ├── tag.ts           // 标签列表
@@ -102,10 +103,10 @@ stores/
 
 ```typescript
 interface AuthState {
-  role: 'admin' | 'parent' | 'student' | null  // 当前角色
-  password: string | null                        // 6位口令（仅内存）
+  currentMemberId: string | null                 // 当前登录成员的 UUID
+  password: string | null                        // 该成员的 6 位密码（仅内存/安全存储）
+  role: 'admin' | 'parent' | 'student' | null   // 由 currentMember.role 派生
   isFirstLaunch: boolean                         // 是否首次启动
-  currentMemberId: string | null                 // 当前成员 UUID
 }
 ```
 
@@ -189,8 +190,8 @@ async fn secure_remove(key: String) -> Result<(), String>
 
 | Key | Value | 说明 |
 |-----|-------|------|
-| `user_role` | "admin" \| "parent" \| "student" | 当前角色 |
-| `user_password` | "123456" | 6位口令 |
+| `current_member_id` | UUID | 当前登录成员 ID（角色由 meta.members 中该成员的 role 字段派生） |
+| `current_member_password` | "123456" | 当前成员的 6 位密码 |
 | `current_workspace_id` | UUID | 当前选中工作区 |
 | `gitee_pat` | token 字符串 | 编译时注入，运行时可更新 |
 
@@ -321,10 +322,11 @@ function filterByDueDate(tasks: Task[], filter: DueDateFilter): Task[] {
 
 ```
 App.vue
-├── GuideView.vue                    // UI-001
-│   ├── RoleSelector.vue
-│   ├── PasswordInput.vue
-│   └── WorkspaceSelector.vue
+├── GuideView.vue                    // UI-001（创建/加入工作区两条路径）
+│   ├── CreateWorkspaceDialog.vue    // 含管理员显示名 + 6 位密码
+│   ├── JoinWorkspaceDialog.vue      // 输入 gistId
+│   ├── MemberPicker.vue             // 加载 meta 后选择对应成员
+│   └── PasswordInput.vue            // 输入该成员 6 位密码
 ├── WorkspaceListView.vue            // UI-002
 │   ├── WorkspaceCard.vue            // (管理员) 编辑/删除入口
 │   ├── WorkspaceJoinItem.vue        // (家长/学生) 加入入口
@@ -361,7 +363,7 @@ App.vue
 ```
 编译时: .env → PAT 注入 Rust 二进制
 运行时:
-  1. 角色 + 口令验证（与 meta.json 中 passwords 比对）
+  1. 成员密码验证（与 meta.json 中对应 member.password 比对，角色由该 member.role 决定）
   2. 所有 API 调用携带 PAT (Authorization: token {PAT})
   3. PAT 仅存在于 Rust 侧内存，不暴露给前端 JS
 ```
@@ -371,16 +373,16 @@ App.vue
 | 数据 | 存储位置 | 加密 |
 |------|---------|------|
 | PAT | 编译时注入 + 系统 Keychain | 系统级 |
-| 用户口令 | 系统 Keychain | 系统级 |
+| 成员密码 | 系统 Keychain（本机当前成员） + meta.json（远端） | 系统级 / 同 gist 安全级 |
 | workspaceKey | 系统 Keychain | 系统级 |
-| 角色信息 | 系统 Keychain | 系统级 |
+| 当前成员 ID | 系统 Keychain | 系统级 |
 | 当前工作区 ID | 系统 Keychain / localStorage | 无（非敏感） |
 
 ### 10.3 日志安全
 
 - Rust 侧日志仅记录 HTTP 状态码和 gistId，不记录 PAT 和请求体
 - 前端 console.log 仅开发环境启用
-- 错误提示不包含 PAT、口令等敏感信息
+- 错误提示不包含 PAT、密码等敏感信息
 
 ---
 
@@ -450,9 +452,9 @@ mytodos/
 │   │   │   ├── LoadingSpinner.vue
 │   │   │   └── ErrorToast.vue
 │   │   ├── guide/
-│   │   │   ├── RoleSelector.vue
 │   │   │   ├── PasswordInput.vue
-│   │   │   └── WorkspaceSelector.vue
+│   │   │   ├── MemberPicker.vue
+│   │   │   └── JoinWorkspaceDialog.vue
 │   │   ├── task/
 │   │   │   ├── TaskItem.vue
 │   │   │   ├── TaskEditForm.vue

@@ -1,7 +1,9 @@
 <template>
   <div class="workspace-list-page">
     <TopBar title="工作区" :is-online="ui.isOnline" />
-    <div class="role-info">当前角色: {{ roleText }}</div>
+    <div class="role-info">
+      当前身份：{{ currentMemberDisplay }}（{{ roleText }}）
+    </div>
     <div class="content">
       <WorkspaceCard
         v-for="ws in wsStore.workspaces"
@@ -10,7 +12,7 @@
         :is-admin="auth.role === 'admin'"
         @select="handleSelect"
       />
-      <p v-if="wsStore.workspaces.length === 0" class="empty">暂无工作区，点击右下角加号创建或导入</p>
+      <p v-if="wsStore.workspaces.length === 0" class="empty">暂无工作区，点击右下角加号创建</p>
     </div>
     <button v-if="auth.role === 'admin'" @click="showCreate = true" class="fab">+</button>
     <button @click="logout" class="logout-btn">退出</button>
@@ -31,9 +33,8 @@ import WorkspaceCard from '../components/workspace/WorkspaceCard.vue'
 import CreateWorkspaceDialog from '../components/workspace/CreateWorkspaceDialog.vue'
 import LoadingSpinner from '../components/common/LoadingSpinner.vue'
 import ErrorToast from '../components/common/ErrorToast.vue'
-import { createGist, serializeMeta, serializeTasks } from '../services/api'
+import { createWorkspace } from '../services/workspace'
 import { loadWorkspace } from '../services/sync'
-import type { WorkspaceMeta, Tag } from '../types'
 
 const auth = useAuthStore()
 const wsStore = useWorkspaceStore()
@@ -45,40 +46,30 @@ const roleText = computed(() => {
   switch (auth.role) { case 'admin': return '管理员'; case 'parent': return '家长'; case 'student': return '学生'; default: return '' }
 })
 
-onMounted(() => { wsStore.loadList() })
+const currentMemberDisplay = computed(() => {
+  const m = wsStore.members.find(x => x.memberId === auth.currentMemberId)
+  return m?.displayName ?? auth.currentMemberId ?? '-'
+})
 
-const DEFAULT_TAGS: Omit<Tag, 'createdAt'>[] = [
-  { tagId: 'tag_chinese', name: '语文', color: '#E74C3C' },
-  { tagId: 'tag_math', name: '数学', color: '#4A90D9' },
-  { tagId: 'tag_english', name: '英语', color: '#27AE60' },
-  { tagId: 'tag_physics', name: '物理', color: '#9B59B6' },
-  { tagId: 'tag_chemistry', name: '化学', color: '#F5A623' },
-  { tagId: 'tag_biology', name: '生物', color: '#16A085' },
-  { tagId: 'tag_history', name: '历史', color: '#8B4513' },
-  { tagId: 'tag_geography', name: '地理', color: '#2C8C99' },
-  { tagId: 'tag_politics', name: '政治', color: '#C0392B' },
-  { tagId: 'tag_pe', name: '体育', color: '#E67E22' },
-  { tagId: 'tag_other', name: '其他', color: '#7F8C8D' },
-]
+onMounted(() => {
+  wsStore.loadList()
+  if (wsStore.currentGistId && !wsStore.meta) {
+    loadWorkspace(wsStore.currentGistId).catch(() => { /* ignore */ })
+  }
+})
 
-async function handleCreate(data: { name: string; description: string; passwords: { admin: string; parent: string; student: string } }) {
+async function handleCreate(data: { name: string; description: string; adminName: string; adminPassword: string }) {
   ui.setLoading(true)
   try {
-    const now = new Date().toISOString()
-    const workspaceId = `ws_${Date.now()}`
-    const meta: WorkspaceMeta = {
-      schemaVersion: 1,
-      workspace: { workspaceId, name: data.name, description: data.description, createdAt: now, updatedAt: now },
-      members: [],
-      tags: DEFAULT_TAGS.map(t => ({ ...t, createdAt: now })),
-      passwords: data.passwords,
-      revision: { remoteRevision: '1' },
-    }
-    const gist = await createGist(`MyTodos: ${data.name}`, {
-      'meta.json': serializeMeta(meta),
-      'todos.json': serializeTasks([]),
+    const result = await createWorkspace(data)
+    // 创建即切换为该工作区的管理员身份
+    await auth.login({
+      workspaceId: result.workspaceId,
+      gistId: result.gistId,
+      member: result.adminMember,
+      password: data.adminPassword,
     })
-    wsStore.addWorkspace({ workspaceId, gistId: gist.id, name: data.name })
+    await loadWorkspace(result.gistId)
     showCreate.value = false
   } catch (e: any) {
     ui.setError(`创建失败: ${e}`)
@@ -90,9 +81,12 @@ async function handleCreate(data: { name: string; description: string; passwords
 async function handleSelect(workspaceId: string) {
   const ws = wsStore.workspaces.find(w => w.workspaceId === workspaceId)
   if (!ws) return
-  wsStore.setCurrentWorkspace(ws.workspaceId, ws.gistId)
+  if (ws.workspaceId !== wsStore.currentWorkspaceId) {
+    ui.setError('当前未登录此工作区，请退出后重新加入')
+    return
+  }
   try {
-    await loadWorkspace(ws.gistId)
+    if (!wsStore.meta) await loadWorkspace(ws.gistId)
   } catch { return }
   if (auth.role === 'admin') {
     router.push(`/workspaces/${workspaceId}/members`)
@@ -101,8 +95,8 @@ async function handleSelect(workspaceId: string) {
   }
 }
 
-function logout() {
-  auth.logout()
+async function logout() {
+  await auth.logout()
   router.replace('/guide')
 }
 </script>

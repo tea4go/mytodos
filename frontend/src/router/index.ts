@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { useWorkspaceStore } from '../stores/workspace'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -45,8 +46,18 @@ const router = createRouter({
   ],
 })
 
+function defaultRouteForRole(role: string | null, currentWorkspaceId: string | null): string {
+  if (role === 'admin') return '/workspaces'
+  if ((role === 'parent' || role === 'student') && currentWorkspaceId) {
+    return `/workspaces/${currentWorkspaceId}/tasks`
+  }
+  return '/workspaces'
+}
+
 router.beforeEach(async (to, _from, next) => {
   const auth = useAuthStore()
+  const wsStore = useWorkspaceStore()
+
   if (!auth.isLoggedIn) {
     await auth.restoreSession()
   }
@@ -55,12 +66,12 @@ router.beforeEach(async (to, _from, next) => {
     return next('/guide')
   }
   if (auth.isLoggedIn && to.name === 'Guide') {
-    return next('/workspaces')
+    return next(defaultRouteForRole(auth.role, wsStore.currentWorkspaceId))
   }
 
   const allowedRoles = to.meta.roles as string[] | null
   if (allowedRoles && auth.role && !allowedRoles.includes(auth.role)) {
-    return next('/workspaces')
+    return next(defaultRouteForRole(auth.role, wsStore.currentWorkspaceId))
   }
   next()
 })

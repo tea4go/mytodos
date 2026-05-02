@@ -9,6 +9,7 @@ export interface Member {
   memberId: string
   displayName: string
   role: Role
+  password: string
 }
 
 // ===== 标签 =====
@@ -52,11 +53,6 @@ export interface WorkspaceMeta {
   }
   members: Member[]
   tags: Tag[]
-  passwords: {
-    admin: string
-    parent: string
-    student: string
-  }
   revision: {
     remoteRevision: string
   }
