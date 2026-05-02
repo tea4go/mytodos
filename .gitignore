@@ -24,11 +24,7 @@ target/
 # OS
 .DS_Store
 Thumbs.db
-scripts/android-permission-sign/.gradle/8.9/gc.properties
-scripts/android-permission-sign/.gradle/8.9/checksums/checksums.lock
-scripts/android-permission-sign/.gradle/8.9/dependencies-accessors/gc.properties
-scripts/android-permission-sign/.gradle/8.9/fileChanges/last-build.bin
-scripts/android-permission-sign/.gradle/8.9/fileHashes/fileHashes.lock
-scripts/android-permission-sign/.gradle/buildOutputCleanup/buildOutputCleanup.lock
-scripts/android-permission-sign/.gradle/buildOutputCleanup/cache.properties
-scripts/android-permission-sign/.gradle/vcs-1/gc.properties
+scripts/android-permission-sign/.gradle/**
+config/keystore.properties
+config/release.keystore
+backend/src-tauri/gen/**

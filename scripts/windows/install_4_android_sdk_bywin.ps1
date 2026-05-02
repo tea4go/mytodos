@@ -290,7 +290,3 @@ Write-Banner -Title 'Android SDK 安装 & 配置完成！                       
 Write-Host ""
 Write-Host "  注意：写入的用户环境变量需要新开终端窗口才会生效" -ForegroundColor Yellow
 Write-Host ""
-Write-Host "  现在可以运行构建脚本：" -ForegroundColor Cyan
-Write-Host "    .\script\build_bywin.ps1 dev"
-Write-Host "    .\script\build_bywin.ps1 build"
-Write-Host ""
