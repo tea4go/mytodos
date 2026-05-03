@@ -1,49 +1,66 @@
 <template>
-  <div class="workspace-login-page">
+  <div class="login-page">
     <div class="header">
-      <button class="back-btn" @click="goBack">‹</button>
-      <h2 class="title">{{ wsStore.meta?.workspace.name ?? '加载中...' }}</h2>
-      <button class="admin-btn" :class="{ disabled: !adminAvailable }" :title="adminAvailable ? '管理员入口' : '该工作区暂无管理员'" @click="adminAvailable && (showAdminDialog = true)">⚙️</button>
+      <h2 class="title">MyTodos</h2>
     </div>
 
-    <template v-if="step === 'pick'">
-      <p class="hint">请选择登录成员：</p>
-      <div class="member-grid">
-        <button
-          v-for="m in normalMembers"
-          :key="m.memberId"
-          class="member-card"
-          @click="pickMember(m)"
-        >
-          <span class="role-badge" :class="m.role">{{ roleText(m.role) }}</span>
-          <span class="name">{{ m.displayName }}</span>
-        </button>
+    <!-- 工作区选择器 -->
+    <div class="ws-switcher">
+      <button
+        v-for="ws in wsStore.workspaces"
+        :key="ws.workspaceId"
+        :class="['ws-btn', { active: currentWsId === ws.workspaceId }]"
+        @click="switchWorkspace(ws.workspaceId)"
+      >{{ ws.name }}</button>
+      <p v-if="wsStore.workspaces.length === 0" class="empty-ws">暂无工作区</p>
+    </div>
+
+    <template v-if="currentWsId">
+      <!-- 管理员入口 -->
+      <div class="admin-bar">
+        <button class="admin-btn" :class="{ disabled: !adminAvailable }" :title="adminAvailable ? '管理员入口' : '该工作区暂无管理员'" @click="adminAvailable && (showAdminDialog = true)">⚙️ 管理员</button>
       </div>
-      <p v-if="wsStore.meta && normalMembers.length === 0" class="empty">该工作区暂无家长/学生成员，请先由管理员添加</p>
+
+      <template v-if="step === 'pick'">
+        <p v-if="normalMembers.length > 0" class="hint">请选择登录成员：</p>
+        <div class="member-grid">
+          <button
+            v-for="m in normalMembers"
+            :key="m.memberId"
+            class="member-card"
+            @click="pickMember(m)"
+          >
+            <span class="role-badge" :class="m.role">{{ roleText(m.role) }}</span>
+            <span class="name">{{ m.displayName }}</span>
+          </button>
+        </div>
+        <p v-if="normalMembers.length === 0" class="empty">该工作区暂无家长/学生成员，请先由管理员添加</p>
+      </template>
+
+      <template v-else-if="step === 'password' && pickedMember">
+        <p class="hint">输入「{{ pickedMember.displayName }}」的 6 位口令：</p>
+        <PasswordInput :key="pwInputKey" :error="error" @complete="onPasswordComplete" />
+        <div class="actions">
+          <button class="btn-cancel" @click="backToPick">返回</button>
+        </div>
+      </template>
+
+      <AdminLoginDialog
+        :visible="showAdminDialog"
+        :members="adminMembers"
+        @close="showAdminDialog = false"
+        @success="onAdminLogin"
+      />
     </template>
 
-    <template v-else-if="step === 'password' && pickedMember">
-      <p class="hint">输入「{{ pickedMember.displayName }}」的 6 位口令：</p>
-      <PasswordInput :key="pwInputKey" :error="error" @complete="onPasswordComplete" />
-      <div class="actions">
-        <button class="btn-cancel" @click="backToPick">返回</button>
-      </div>
-    </template>
-
-    <AdminLoginDialog
-      :visible="showAdminDialog"
-      :members="adminMembers"
-      @close="showAdminDialog = false"
-      @success="onAdminLogin"
-    />
     <LoadingSpinner :visible="ui.loading" text="处理中..." />
     <ErrorToast :message="ui.error" @close="ui.clearError()" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useWorkspaceStore } from '../stores/workspace'
 import { useUiStore } from '../stores/ui'
@@ -54,7 +71,6 @@ import LoadingSpinner from '../components/common/LoadingSpinner.vue'
 import ErrorToast from '../components/common/ErrorToast.vue'
 import type { Member, Role } from '../types'
 
-const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const wsStore = useWorkspaceStore()
@@ -67,34 +83,58 @@ const error = ref<string | null>(null)
 const showAdminDialog = ref(false)
 const pwInputKey = ref(0)
 
-const workspaceId = computed(() => String(route.params.id))
+// 当前选中工作区：优先 localStorage 恢复值，否则第一个
+const currentWsId = ref<string | null>(null)
 
-const normalMembers = computed<Member[]>(() =>
-  (wsStore.meta?.members ?? []).filter(m =>
-    m.role !== 'admin' && (m.workspaceId === workspaceId.value || m.workspaceId == null),
-  ),
-)
+const normalMembers = computed<Member[]>(() => {
+  const wid = currentWsId.value
+  if (!wid) return []
+  return (wsStore.meta?.members ?? wsStore.members).filter(m =>
+    m.role !== 'admin' && (m.workspaceId === wid || m.workspaceId == null),
+  )
+})
 
-const adminMembers = computed<Member[]>(() =>
-  wsStore.members.filter(m =>
-    m.role === 'admin' && (m.workspaceId === workspaceId.value || m.workspaceId == null),
-  ),
-)
+const adminMembers = computed<Member[]>(() => {
+  const wid = currentWsId.value
+  if (!wid) return []
+  return wsStore.members.filter(m =>
+    m.role === 'admin' && (m.workspaceId === wid || m.workspaceId == null),
+  )
+})
 
 const adminAvailable = computed(() => adminMembers.value.length > 0)
 
 onMounted(async () => {
-  wsStore.loadList()
-  const ws = wsStore.workspaces.find(w => w.workspaceId === workspaceId.value)
-  if (!ws) {
-    ui.setError('未找到该工作区，请重新加入')
-    router.replace('/workspaces')
-    return
+  // 恢复上次选中的工作区
+  wsStore.restoreWorkspace()
+  const saved = wsStore.currentWorkspaceId
+  if (saved && wsStore.workspaces.some(w => w.workspaceId === saved)) {
+    currentWsId.value = saved
+  } else if (wsStore.workspaces.length > 0) {
+    currentWsId.value = wsStore.workspaces[0].workspaceId
   }
+  await loadCurrentWsData()
+})
+
+// 切换工作区时加载对应数据并重置步骤
+async function switchWorkspace(workspaceId: string) {
+  currentWsId.value = workspaceId
+  wsStore.setCurrentWorkspace(workspaceId)
+  step.value = 'pick'
+  pickedMember.value = null
+  error.value = null
+  await loadCurrentWsData()
+}
+
+async function loadCurrentWsData() {
+  const wid = currentWsId.value
+  if (!wid) return
+  const ws = wsStore.workspaces.find(w => w.workspaceId === wid)
+  if (!ws) return
   if (!wsStore.meta || wsStore.currentGistId !== ws.gistId) {
     try { await loadWorkspace(ws.gistId) } catch { /* error 已由 sync 处理 */ }
   }
-})
+}
 
 function pickMember(m: Member) {
   pickedMember.value = m
@@ -110,39 +150,35 @@ function backToPick() {
 }
 
 async function onPasswordComplete(pw: string) {
-  if (!pickedMember.value) return
+  if (!pickedMember.value || !currentWsId.value) return
   if (pickedMember.value.password !== pw) {
     error.value = '密码错误'
     pwInputKey.value++
     return
   }
-  const ws = wsStore.workspaces.find(w => w.workspaceId === workspaceId.value)
+  const ws = wsStore.workspaces.find(w => w.workspaceId === currentWsId.value)
   if (!ws) return
   await auth.login({
-    workspaceId: workspaceId.value,
+    workspaceId: currentWsId.value,
     gistId: ws.gistId,
     member: pickedMember.value,
     password: pw,
   })
-  router.replace(`/workspaces/${workspaceId.value}/tasks`)
+  router.replace(`/workspaces/${currentWsId.value}/tasks`)
 }
 
 async function onAdminLogin(payload: { member: Member; password: string }) {
-  const ws = wsStore.workspaces.find(w => w.workspaceId === workspaceId.value)
+  if (!currentWsId.value) return
+  const ws = wsStore.workspaces.find(w => w.workspaceId === currentWsId.value)
   if (!ws) return
   await auth.login({
-    workspaceId: workspaceId.value,
+    workspaceId: currentWsId.value,
     gistId: ws.gistId,
     member: payload.member,
     password: payload.password,
   })
   showAdminDialog.value = false
-  router.replace(`/workspaces/${workspaceId.value}/admin`)
-}
-
-function goBack() {
-  if (step.value === 'password') backToPick()
-  else router.replace('/workspaces')
+  router.replace(`/workspaces/${currentWsId.value}/admin`)
 }
 
 function roleText(r: Role) {
@@ -151,12 +187,21 @@ function roleText(r: Role) {
 </script>
 
 <style scoped>
-.workspace-login-page { min-height: 100vh; padding: 16px; background: #f8f9fa; }
-.header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
-.title { flex: 1; font-size: 18px; color: #333; margin: 0; text-align: center; }
-.back-btn { width: 36px; height: 36px; border: none; background: transparent; font-size: 24px; cursor: pointer; color: #4A90D9; }
-.admin-btn { width: 36px; height: 36px; border: 1px solid #ddd; background: #fff; border-radius: 50%; font-size: 18px; cursor: pointer; }
+.login-page { min-height: 100vh; padding: 16px; background: #f8f9fa; }
+.header { display: flex; align-items: center; justify-content: center; margin-bottom: 12px; padding-top: 8px; }
+.title { font-size: 24px; color: #4A90D9; margin: 0; font-weight: 600; }
+
+/* 工作区选择器 */
+.ws-switcher { display: flex; gap: 8px; padding: 8px 4px; overflow-x: auto; margin-bottom: 16px; }
+.ws-btn { padding: 8px 16px; border: 2px solid #ddd; border-radius: 20px; background: #fff; cursor: pointer; font-size: 14px; white-space: nowrap; transition: all 0.15s; }
+.ws-btn.active { border-color: #4A90D9; background: #4A90D9; color: #fff; }
+.empty-ws { color: #999; font-size: 14px; }
+
+/* 管理员入口 */
+.admin-bar { text-align: right; margin-bottom: 12px; }
+.admin-btn { padding: 6px 14px; border: 1px solid #ddd; background: #fff; border-radius: 20px; font-size: 13px; cursor: pointer; }
 .admin-btn.disabled { opacity: 0.4; cursor: not-allowed; }
+
 .hint { color: #555; font-size: 14px; margin: 12px 0; text-align: center; }
 .member-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; padding: 8px; }
 .member-card {

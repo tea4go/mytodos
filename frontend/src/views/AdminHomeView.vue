@@ -62,7 +62,7 @@ function go(target: 'members' | 'tags' | 'settings') {
 
 async function logout() {
   await auth.logout()
-  router.replace(`/workspaces/${workspaceId.value}/login`)
+  router.replace('/login')
 }
 </script>
 

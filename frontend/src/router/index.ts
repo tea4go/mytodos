@@ -20,8 +20,8 @@ const router = createRouter({
       meta: { roles: null as string[] | null },
     },
     {
-      path: '/workspaces/:id/login',
-      name: 'WorkspaceLogin',
+      path: '/login',
+      name: 'Login',
       component: () => import('../views/WorkspaceLoginView.vue'),
       meta: { roles: null as string[] | null },
     },
@@ -75,13 +75,15 @@ function defaultRouteForRole(role: string | null, currentWorkspaceId: string | n
   return '/workspaces'
 }
 
-/** 未登录时的默认入口（直接进全局登录页）。 */
-function defaultUnauthedRoute(): string {
-  return '/guide'
+/** 未登录时的默认入口：有工作区且至少有 admin → /login，否则 → /guide（首启向导）。 */
+function defaultUnauthedRoute(wsStore: ReturnType<typeof useWorkspaceStore>): string {
+  const hasWs = wsStore.workspaces.length > 0
+  const hasAdmin = wsStore.members.some(m => m.role === 'admin')
+  return (hasWs && hasAdmin) ? '/login' : '/guide'
 }
 
 /** 允许在未登录状态访问的路由名。 */
-const PUBLIC_ROUTES = new Set(['Guide', 'Workspaces', 'WorkspaceLogin'])
+const PUBLIC_ROUTES = new Set(['Guide', 'Workspaces', 'Login'])
 
 router.beforeEach(async (to, _from, next) => {
   const auth = useAuthStore()
@@ -100,11 +102,11 @@ router.beforeEach(async (to, _from, next) => {
     if (to.name && PUBLIC_ROUTES.has(String(to.name))) {
       return next()
     }
-    return next(defaultUnauthedRoute())
+    return next(defaultUnauthedRoute(wsStore))
   }
 
-  // 已登录访问引导页 → 跳角色默认页
-  if (to.name === 'Guide') {
+  // 已登录访问引导页/登录页 → 跳角色默认页
+  if (to.name === 'Guide' || to.name === 'Login') {
     return next(defaultRouteForRole(auth.role, wsStore.currentWorkspaceId))
   }
 

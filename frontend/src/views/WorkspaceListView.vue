@@ -85,15 +85,14 @@ async function handleSelect(workspaceId: string) {
     }
     return
   }
-  // 否则前往该工作区登录页
-  router.push(`/workspaces/${workspaceId}/login`)
+  // 否则前往登录页，先切换当前工作区
+  wsStore.setCurrentWorkspace(workspaceId, ws.gistId)
+  router.push('/login')
 }
 
 async function logout() {
-  const targetWsId = wsStore.currentWorkspaceId
   await auth.logout()
-  if (targetWsId) router.replace(`/workspaces/${targetWsId}/login`)
-  else router.replace('/workspaces')
+  router.replace('/login')
 }
 </script>
 

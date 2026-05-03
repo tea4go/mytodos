@@ -58,7 +58,7 @@
 |------|------|------|------|
 | `/guide` | UI-001 引导页 | GuideView | 无（仅本地无工作区时显示） |
 | `/workspaces` | UI-002 工作区列表 | WorkspaceListView | 所有角色（含未登录） |
-| `/workspaces/:id/login` | UI-002a 工作区登录页 | WorkspaceLoginView | 无（允许未登录访问） |
+| `/login` | UI-002a 登录页（含工作区选择器） | WorkspaceLoginView | 无（允许未登录访问） |
 | `/workspaces/:id/tasks` | UI-101 任务列表 | TaskListView | 家长、学生 |
 | `/workspaces/:id/tasks/:taskId` | UI-102 任务详情 | TaskDetailView | 所有角色 |
 | `/workspaces/:id/tags` | UI-103 标签管理 | TagManageView | 仅管理员 |
@@ -72,8 +72,8 @@
 Router.beforeEach(to, from, next):
   1. 尝试从安全存储恢复 session（currentMemberId + role + password + currentWorkspaceId）
   2. 未登录访问受限路由：
-     - 允许：/guide、/workspaces、/workspaces/:id/login
-     - 其他 → 跳 /workspaces（若本地有工作区）或 /guide
+     - 允许：/guide、/workspaces、/login
+     - 其他 → 跳 /login（若有工作区且至少有 admin）或 /guide（首启）
   3. 已登录访问 /guide → 跳到角色默认页
   4. 检查 to.meta.roles 是否包含当前 role；不匹配 → 跳角色默认页
 ```
@@ -89,8 +89,7 @@ Router.beforeEach(to, from, next):
 
 ### 3.4 退出登录跳转
 
-- 当前工作区存在 → `/workspaces/:id/login`（保留工作区上下文，便于切换成员）。
-- 无当前工作区但本地有工作区列表 → `/workspaces`。
+- 退出后统一跳转 `/login`（保留当前工作区上下文，便于切换成员）。
 - 本地无任何工作区 → `/guide`。
 
 ---

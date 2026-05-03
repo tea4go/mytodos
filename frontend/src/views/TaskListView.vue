@@ -144,7 +144,7 @@ function openCreate() {
 
 async function onLogout() {
   await auth.logout()
-  router.replace('/guide')
+  router.replace('/login')
 }
 </script>
 
