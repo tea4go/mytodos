@@ -1,0 +1,165 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+# GITHUB_TOKEN 自动提供；写 release 资产需要 contents: write
+permissions:
+  contents: write
+
+jobs:
+  # ========== 桌面端：Windows / macOS / Linux ==========
+  build-desktop:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-latest
+            args: ''
+          - platform: macos-latest
+            args: '--target universal-apple-darwin'
+          - platform: ubuntu-22.04
+            args: ''
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          # macOS universal binary 需要同时安装两个 target
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: Install system dependencies (Ubuntu)
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      # ---- 写入构建所需的 .env 文件（被 .gitignore 排除） ----
+      - name: Create backend .env
+        working-directory: backend/src-tauri
+        shell: bash
+        run: echo "GITEE_PAT=${{ secrets.GITEE_PAT }}" > .env
+
+      - name: Create frontend .env
+        working-directory: frontend
+        shell: bash
+        run: echo "VITE_GLOBAL_GIST_ID=${{ secrets.VITE_GLOBAL_GIST_ID }}" > .env
+
+      # ---- Tauri 构建并发布 ----
+      - name: Build and upload to Release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'MyTodos ${{ github.ref_name }}'
+          releaseBody: |
+            详见 [CHANGELOG](https://github.com/tea4go/mytodos/blob/main/CHANGELOG.md) 或下方文件列表。
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}
+
+  # ========== Android ==========
+  build-android:
+    runs-on: ubuntu-latest
+    # 与桌面端并行；即使桌面端失败也执行
+    if: ${{ true }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: 17
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Accept Android licenses
+        run: yes | sdkmanager --licenses || true
+
+      - name: Install Android NDK & build tools
+        run: sdkmanager "ndk;27.0.12077973" "build-tools;34.0.0" "platforms;android-34"
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android,i686-linux-android
+
+      - name: Rust cross-compile targets
+        run: |
+          rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android i686-linux-android
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Create backend .env
+        working-directory: backend/src-tauri
+        run: echo "GITEE_PAT=${{ secrets.GITEE_PAT }}" > .env
+
+      - name: Create frontend .env
+        working-directory: frontend
+        run: echo "VITE_GLOBAL_GIST_ID=${{ secrets.VITE_GLOBAL_GIST_ID }}" > .env
+
+      # ---- Android 签名配置 ----
+      - name: Setup Android keystore
+        run: |
+          echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 -d > config/release.keystore
+          cat > config/keystore.properties <<EOF
+          keyAlias=${{ secrets.KEYSTORE_ALIAS }}
+          password=${{ secrets.KEYSTORE_PASSWORD }}
+          storeFile=../../config/release.keystore
+          EOF
+
+      - name: Init Tauri Android project
+        run: pnpm tauri android init
+
+      - name: Build Android APK
+        run: pnpm tauri android build
+
+      - name: Find APK
+        id: apk
+        run: |
+          APK=$(find backend/src-tauri/gen/android -name '*.apk' -path '*/release/*' | head -1)
+          if [ -z "$APK" ]; then
+            APK=$(find backend/src-tauri/gen/android -name '*.apk' | head -1)
+          fi
+          echo "path=$APK" >> $GITHUB_OUTPUT
+          echo "Found APK: $APK"
+
+      - name: Upload APK to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: ${{ steps.apk.outputs.path }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
