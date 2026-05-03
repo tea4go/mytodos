@@ -128,17 +128,21 @@ jobs:
 
       # ---- Android 签名配置 ----
       - name: Setup Android keystore
-        run: |
-          mkdir -p config
-          echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 -d > config/release.keystore
-          cat > config/keystore.properties <<EOF
-          keyAlias=${{ secrets.KEYSTORE_ALIAS }}
-          password=${{ secrets.KEYSTORE_PASSWORD }}
-          storeFile=../../config/release.keystore
-          EOF
+        run: mkdir -p config && echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 -d > config/release.keystore
 
       - name: Init Tauri Android project
         run: pnpm tauri android init
+
+      - name: Patch Android signing config
+        run: |
+          GEN=backend/src-tauri/gen/android
+          echo "keyAlias=${{ secrets.KEYSTORE_ALIAS }}" > "$GEN/keystore.properties"
+          echo "password=${{ secrets.KEYSTORE_PASSWORD }}" >> "$GEN/keystore.properties"
+          echo "storeFile=../../../config/release.keystore" >> "$GEN/keystore.properties"
+          FILE="$GEN/app/build.gradle.kts"
+          sed -i '1i import java.io.FileInputStream' "$FILE"
+          sed -i '/    buildTypes {/i\    signingConfigs {\n        create("release") {\n            val kpFile = rootProject.file("keystore.properties")\n            val kp = Properties()\n            if (kpFile.exists()) kp.load(java.io.FileInputStream(kpFile))\n            keyAlias = kp.getProperty("keyAlias", "")\n            keyPassword = kp.getProperty("password", "")\n            storeFile = file(kp.getProperty("storeFile", "./release.keystore"))\n            storePassword = kp.getProperty("password", "")\n        }\n    }' "$FILE"
+          sed -i '/getByName("release") {/a\            signingConfig = signingConfigs.getByName("release")' "$FILE"
 
       - name: Build Android APK
         run: pnpm tauri android build
