@@ -44,9 +44,17 @@
 | 路由 | Vue Router 4 | 页面导航与角色守卫 |
 | UI 组件 | 自研 / 轻量组件库 | 移动端优先 |
 | 桌面壳 | Tauri 2 | Rust 后端 + WebView |
-| HTTP | Tauri HTTP Plugin / fetch | Gitee API 调用 |
+| HTTP | reqwest 0.12 + rustls-tls | Rust 端直连 Gitee API（绕 CORS）；使用 rustls 避免交叉编译依赖 OpenSSL |
 | 安全存储 | Tauri Plugin (keyring/secure-store) | PAT、成员密码、workspaceKey |
 | 构建 | Vite | 前端打包 |
+
+### 2.3 Android 兼容性补丁
+
+Tauri 依赖的 `tao` 和 `wry` 库在 Android 端使用 JNI 调用 `Activity.getId()` 获取活动 ID，但该方法从 API 28（Android 9）才可用。为兼容 Android 7.0~8.1（API 24~27），通过 Cargo `[patch.crates-io]` 机制引用本地补丁：
+
+- `patches/tao-0.35.0/`：修补 `ndk_glue.rs`，将 `getId()` 调用改为 match 分支，失败时清除 JNI 异常并回退到 `hashCode()`。
+- `patches/wry-0.55.0/`：修补 `android/mod.rs`，应用相同的回退逻辑。
+- Android 日志：使用 `android_logger` + `log` crate 将 Rust 日志输出到 logcat，`lib.rs` 中设置 panic hook 捕获崩溃信息。
 
 ---
 

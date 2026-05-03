@@ -12,10 +12,12 @@ tauri = { version = "2", features = [] }
 tauri-plugin-shell = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-reqwest = { version = "0.12", default-features = false, features = ["json", "native-tls"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "fs", "io-util"] }
 once_cell = "1"
 dotenvy = "0.15"
+log = "0.4"
+android_logger = "0.14"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
@@ -23,3 +25,8 @@ tauri-build = { version = "2", features = [] }
 [features]
 default = ["custom-protocol"]
 custom-protocol = ["tauri/custom-protocol"]
+
+[patch.crates-io]
+tao = { path = "../../patches/tao-0.35.0" }
+wry = { path = "../../patches/wry-0.55.0" }
+

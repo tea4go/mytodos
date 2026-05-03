@@ -14,6 +14,7 @@ target/
 *.pdb
 **/*.rs.bk
 **/mutants.out*/
+*.log
 
 # IDE
 .vscode/

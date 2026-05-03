@@ -69,7 +69,7 @@ MyTodos 是一个无需自建后端的协作待办应用。所有团队数据以
 
 ### 2.3 运行环境
 
-- 移动端：Android / iOS（Tauri Mobile）。
+- 移动端：Android（最低 API 24，即 Android 7.0；兼容至 Android 8.1 / API 27 已验证）/ iOS（Tauri Mobile）。
 - PC 端：Windows / macOS / Linux。
 - 设备能力：
   - 必须：网络访问（HTTPS）。
@@ -505,7 +505,7 @@ MyTodos 是一个无需自建后端的协作待办应用。所有团队数据以
 
 ### 7.4 兼容性与可维护性
 
-- **NFR-301 平台兼容**：Android/iOS 适配主流分辨率与深色模式（可选）。
+- **NFR-301 平台兼容**：Android/iOS 适配主流分辨率与深色模式（可选）。Android 最低支持 API 24（Android 7.0），已验证 API 27（Android 8.1）兼容性。
 - **NFR-302 可迁移**：支持将工作区数据迁移至新的 gistId（管理员操作，在 FR-003 工作区编辑功能中实现）。
 
 ### 7.5 易用性

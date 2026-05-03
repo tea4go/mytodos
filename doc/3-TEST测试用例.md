@@ -16,7 +16,7 @@
 
 ### 1.3 测试环境
 
-- 测试设备：Android 中端机 / iOS 中端机 / Windows 桌面端
+- 测试设备：Android 中端机（含 Android 8.1 / API 27 低版本设备）/ iOS 中端机 / Windows 桌面端
 - 网络环境：正常网络 / 弱网(模拟) / 断网
 - 测试数据：预置标准工作区（含 4 成员、11 标签、若干任务）
 
@@ -686,6 +686,23 @@
 | 1 | 安装 Windows / macOS / Linux 桌面包 | 桌面/启动菜单中应用图标为剪贴板 + 勾选样式（来源：clipboard-todo.svg） |
 | 2 | 安装 Android APK | Launcher 中应用图标一致 |
 | 3 | 检查 `backend/src-tauri/icons/` 各分辨率 ico/png/icns | 均由 `pnpm tauri icon` 自统一 SVG 源生成，无遗漏分辨率 |
+
+---
+
+### TC-502 Android 8.1（API 27）兼容性
+
+| 项目 | 内容 |
+|------|------|
+| **对应 FR** | NFR-301 |
+| **前置条件** | 使用 Android 8.1（API 27）设备，已安装 release APK |
+| **优先级** | P1 |
+
+| 步骤 | 操作 | 预期结果 |
+|------|------|----------|
+| 1 | 安装并启动 APK | 应用正常启动，不崩溃（无 `Activity.getId()` JNI 异常） |
+| 2 | 验证 logcat 输出 | `adb logcat -s mytodos` 可见 `mytodos lib loaded` 等日志 |
+| 3 | 进入引导/登录页 | WebView 正常渲染，页面可交互 |
+| 4 | 创建/查看任务 | 数据通过 reqwest+rustls 正常请求 Gitee API |
 
 ---
 
