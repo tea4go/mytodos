@@ -176,6 +176,20 @@ jobs:
           open('$FILE', 'w').write(c)
           "
 
+      - name: Verify signing config
+        run: |
+          echo "=== keystore.properties ==="
+          cat backend/src-tauri/gen/android/keystore.properties
+          echo ""
+          echo "=== keystore file size ==="
+          ls -la config/release.keystore
+          echo ""
+          echo "=== signing config in build.gradle.kts ==="
+          grep -A15 "signingConfigs" backend/src-tauri/gen/android/app/build.gradle.kts || echo "no signingConfigs found"
+          echo ""
+          echo "=== keytool list ==="
+          keytool -list -keystore config/release.keystore -storepass ${{ secrets.KEYSTORE_PASSWORD }} -v 2>&1 | head -10 || echo "keytool failed"
+
       - name: Build Android APK
         run: pnpm tauri android build
 
