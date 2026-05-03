@@ -397,12 +397,12 @@ App.vue
 ├── WorkspaceListView.vue            // UI-002 工作区列表（来源：全局配置 gist）
 │   ├── WorkspaceCard.vue
 │   └── CreateWorkspaceDialog.vue    // 已登录管理员可继续创建（同样仅名称 + 描述）
-├── WorkspaceLoginView.vue           // UI-002a 工作区登录页（首页）
+├─��� WorkspaceLoginView.vue           // UI-002a 登录页（提示"请选择登录帐号"；底部工作区选择器仅 ≥2 工作区时显示）
 │   ├── MemberPicker.vue             // 仅列 (workspaceId === 当前 || workspaceId == null) && role !== 'admin'
 │   ├── PasswordInput.vue            // 6 位口令输入
-│   └── AdminLoginDialog.vue         // 右上角管理员入口（候选 admin 同样按工作区过滤；无候选时按钮置灰）
+│   └── AdminLoginDialog.vue         // 管理员入口（仅选人步骤显示；候选 admin 按工作区过滤；无候选时置灰）
 ├── TaskListView.vue                 // UI-101
-│   ├── TopBar.vue                   // 通用：标题 + 在线/离线背景色 + 右上角图标按钮（搜索 / 退出）
+│   ├── TopBar.vue                   // 通用：标题（**含工作区名前缀**） + 在线/离线背景色 + 右上角图标按钮（搜索 / 退出）
 │   ├── SearchBar.vue                // v-if showSearch（默认 false，由 TopBar 搜索图标切换）
 │   ├── FilterBar.vue
 │   │   ├── 家长：状态、指派人、截止日期、标签筛选（默认状态=todo、截止=today）
@@ -411,7 +411,7 @@ App.vue
 │   └── AddTaskButton.vue            // 仅家长可见
 ├── TaskDetailView.vue               // UI-102（新增显示 开始时间 / 完成时间 / 标签）
 │   ├── TaskFieldDisplay.vue
-│   ├── TaskEditForm.vue             // 仅家长（创建态隐藏「状态」字段；状态/优先级/指派人/标签均使用按钮组；指派人按钮组仅列 student；标签必选，无"（无）"选项，新建默认取第一个标签）
+│   ├── TaskEditForm.vue             // 仅家长（创建态隐藏「状态」字段；状态/优先级/指派人/标签均使用按钮组；指派人按钮组仅列 student 且**必填**（未选时保存置灰）；标签必选，无"（无）"选项，新建默认取第一个标签）
 │   └── TaskStatusActions.vue        // 仅学生/家长
 ├── TagManageView.vue                // UI-103
 │   ├── TagList.vue
