@@ -151,7 +151,7 @@ jobs:
           GEN=backend/src-tauri/gen/android
           echo "keyAlias=${{ secrets.KEYSTORE_ALIAS }}" > "$GEN/keystore.properties"
           echo "password=${{ secrets.KEYSTORE_PASSWORD }}" >> "$GEN/keystore.properties"
-          echo "storeFile=../../../config/release.keystore" >> "$GEN/keystore.properties"
+          echo "storeFile=../../../../../config/release.keystore" >> "$GEN/keystore.properties"
           FILE="$GEN/app/build.gradle.kts"
           python3 -c "
           c = open('$FILE').read()
