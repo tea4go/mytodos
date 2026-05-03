@@ -89,7 +89,7 @@ const selectedTagId = computed<string>({
   get: () => form.tagIds[0] ?? '',
   set: (v: string) => { form.tagIds = v ? [v] : [] },
 })
-const valid = computed(() => form.title.trim().length > 0 && form.tagIds.length > 0)
+const valid = computed(() => form.title.trim().length > 0 && form.tagIds.length > 0 && !!form.assigneeId)
 
 function submit() { emit('save', { ...form }) }
 </script>

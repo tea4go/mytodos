@@ -1,7 +1,7 @@
 <template>
   <div class="task-list-page">
     <TopBar
-      :title="auth.role === 'parent' ? '分配任务' : '处理任务'"
+      :title="`${wsStore.currentConfig?.name ?? ''} — ${auth.role === 'parent' ? '分配任务' : '处理任务'}`"
       :is-online="ui.isOnline"
       :show-logout="auth.role === 'student' || auth.role === 'parent'"
       :show-search="true"
