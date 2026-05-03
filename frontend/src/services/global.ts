@@ -22,7 +22,7 @@ export function parseGlobalFromGist(gist: GistResponse): GlobalConfig {
   const file = gist.files?.['global.json']
   if (!file?.content) {
     // 全局 gist 还未初始化（首次部署）：返回空配置
-    return { schemaVersion: 2, workspaces: [], members: [], tags: [] }
+    return { schemaVersion: 3, workspaces: [], members: [], tags: [] }
   }
   const parsed = JSON.parse(file.content)
   const workspacesRaw: any[] = Array.isArray(parsed.workspaces) ? parsed.workspaces : []
@@ -49,10 +49,18 @@ export function parseGlobalFromGist(gist: GistResponse): GlobalConfig {
       updatedAt: w.updatedAt,
     }
   })
+  const needMigrate = (parsed.schemaVersion ?? 2) < 3
+  const members: GlobalConfig['members'] = aggregatedMembers.map(m => ({
+    memberId: m.memberId,
+    displayName: m.displayName,
+    role: m.role,
+    password: m.password,
+    workspaceId: needMigrate ? null : (m.workspaceId ?? null),
+  }))
   return {
-    schemaVersion: parsed.schemaVersion ?? 2,
+    schemaVersion: 3,
     workspaces,
-    members: aggregatedMembers,
+    members,
     tags: aggregatedTags,
   }
 }

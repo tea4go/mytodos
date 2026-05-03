@@ -58,17 +58,12 @@ onMounted(() => {
   }
 })
 
-async function handleCreate(data: { name: string; description: string; adminName: string; adminPassword: string }) {
+async function handleCreate(data: { name: string; description: string }) {
   ui.setLoading(true)
   try {
     const result = await createWorkspace(data)
-    // 创建即切换为该工作区的管理员身份
-    await auth.login({
-      workspaceId: result.workspaceId,
-      gistId: result.gistId,
-      member: result.adminMember,
-      password: data.adminPassword,
-    })
+    // 创建后切换到该工作区
+    wsStore.setCurrentWorkspace(result.workspaceId, result.gistId)
     await loadWorkspace(result.gistId)
     showCreate.value = false
   } catch (e: any) {

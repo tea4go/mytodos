@@ -3,7 +3,7 @@
     <div class="header">
       <button class="back-btn" @click="goBack">‹</button>
       <h2 class="title">{{ wsStore.meta?.workspace.name ?? '加载中...' }}</h2>
-      <button class="admin-btn" :title="'管理员入口'" @click="showAdminDialog = true">⚙️</button>
+      <button class="admin-btn" :class="{ disabled: !adminAvailable }" :title="adminAvailable ? '管理员入口' : '该工作区暂无管理员'" @click="adminAvailable && (showAdminDialog = true)">⚙️</button>
     </div>
 
     <template v-if="step === 'pick'">
@@ -32,7 +32,7 @@
 
     <AdminLoginDialog
       :visible="showAdminDialog"
-      :members="wsStore.members"
+      :members="adminMembers"
       @close="showAdminDialog = false"
       @success="onAdminLogin"
     />
@@ -70,8 +70,18 @@ const pwInputKey = ref(0)
 const workspaceId = computed(() => String(route.params.id))
 
 const normalMembers = computed<Member[]>(() =>
-  (wsStore.meta?.members ?? []).filter(m => m.role !== 'admin'),
+  (wsStore.meta?.members ?? []).filter(m =>
+    m.role !== 'admin' && (m.workspaceId === workspaceId.value || m.workspaceId == null),
+  ),
 )
+
+const adminMembers = computed<Member[]>(() =>
+  wsStore.members.filter(m =>
+    m.role === 'admin' && (m.workspaceId === workspaceId.value || m.workspaceId == null),
+  ),
+)
+
+const adminAvailable = computed(() => adminMembers.value.length > 0)
 
 onMounted(async () => {
   wsStore.loadList()
@@ -146,6 +156,7 @@ function roleText(r: Role) {
 .title { flex: 1; font-size: 18px; color: #333; margin: 0; text-align: center; }
 .back-btn { width: 36px; height: 36px; border: none; background: transparent; font-size: 24px; cursor: pointer; color: #4A90D9; }
 .admin-btn { width: 36px; height: 36px; border: 1px solid #ddd; background: #fff; border-radius: 50%; font-size: 18px; cursor: pointer; }
+.admin-btn.disabled { opacity: 0.4; cursor: not-allowed; }
 .hint { color: #555; font-size: 14px; margin: 12px 0; text-align: center; }
 .member-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; padding: 8px; }
 .member-card {

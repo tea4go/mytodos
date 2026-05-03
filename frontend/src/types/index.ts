@@ -10,6 +10,7 @@ export interface Member {
   displayName: string
   role: Role
   password: string
+  workspaceId: string | null
 }
 
 // ===== 标签 =====

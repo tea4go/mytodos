@@ -129,10 +129,18 @@ interface WorkspaceState {
 }
 
 interface GlobalConfig {
-  schemaVersion: 2
+  schemaVersion: 3                     // v3 起 Member 含 workspaceId 字段
   workspaces: WorkspaceConfig[]        // 工作区基本信息（不含成员/标签）
-  members: Member[]                    // 全局成员列表（所有工作区共享）
+  members: Member[]                    // 全局成员列表（每条可挂在某工作区或全局）
   tags: Tag[]                          // 全局标签列表（所有工作区共享）
+}
+
+interface Member {
+  memberId: string
+  displayName: string
+  role: 'admin' | 'parent' | 'student'
+  password: string
+  workspaceId: string | null           // 弱绑定：null = 全局成员；非空 = 仅挂在该工作区
 }
 
 interface WorkspaceConfig {
@@ -318,6 +326,45 @@ function filterByDueDate(tasks: Task[], filter: DueDateFilter): Task[] {
 }
 ```
 
+### 7.4 全局配置 v2 → v3 迁移
+
+```typescript
+// services/global.ts —— parseGlobalFromGist 内
+function migrateMembersToV3(parsed: any): GlobalConfig {
+  const membersRaw: any[] = Array.isArray(parsed.members) ? parsed.members : []
+  const needMigrate = (parsed.schemaVersion ?? 2) < 3
+  const members: Member[] = membersRaw.map(m => ({
+    memberId: m.memberId,
+    displayName: m.displayName,
+    role: m.role,
+    password: m.password,
+    workspaceId: needMigrate ? null : (m.workspaceId ?? null),
+  }))
+  return { ...parsed, schemaVersion: 3, members }
+}
+```
+
+- 仅在内存中迁移；下一次任意写回 global.json 时把 v3 形态覆盖到远端。
+- 所有"读 global"调用点统一过 `parseGlobalFromGist`，不需要业务方关心版本号。
+
+### 7.5 成员-工作区登录过滤
+
+```typescript
+function visibleMembersForLogin(all: Member[], workspaceId: string): Member[] {
+  return all.filter(m =>
+    (m.workspaceId === workspaceId || m.workspaceId == null)
+    && m.role !== 'admin',
+  )
+}
+
+function adminCandidate(all: Member[], workspaceId: string): Member | null {
+  return all.find(m =>
+    m.role === 'admin'
+    && (m.workspaceId === workspaceId || m.workspaceId == null),
+  ) ?? null
+}
+```
+
 ---
 
 ## 8. 权限控制矩阵
@@ -345,15 +392,16 @@ function filterByDueDate(tasks: Task[], filter: DueDateFilter): Task[] {
 
 ```
 App.vue
-├── GuideView.vue                    // UI-001（仅"创建工作区"入口）
-│   └── CreateWorkspaceDialog.vue    // 含管理员显示名 + 6 位密码
+├── GuideView.vue                    // UI-001 首启两步向导（建工作区 → 建初始管理员）
+│   ├── CreateWorkspaceDialog.vue    // 仅含名称 + 描述（不再有管理员字段）
+│   └── InitialAdminForm.vue         // 显示名 + 6 位密码 + 归属工作区按钮组（默认刚建工作区）
 ├── WorkspaceListView.vue            // UI-002 工作区列表（来源：全局配置 gist）
 │   ├── WorkspaceCard.vue
-│   └── CreateWorkspaceDialog.vue    // 已登录管理员可继续创建
+│   └── CreateWorkspaceDialog.vue    // 已登录管理员可继续创建（同样仅名称 + 描述）
 ├── WorkspaceLoginView.vue           // UI-002a 工作区登录页（首页）
-│   ├── MemberPicker.vue             // 仅列 parent/student 的成员卡片
+│   ├── MemberPicker.vue             // 仅列 (workspaceId === 当前 || workspaceId == null) && role !== 'admin'
 │   ├── PasswordInput.vue            // 6 位口令输入
-│   └── AdminLoginDialog.vue         // 右上角管理员入口（输入 admin 成员密码）
+│   └── AdminLoginDialog.vue         // 右上角管理员入口（候选 admin 同样按工作区过滤；无候选时按钮置灰）
 ├── TaskListView.vue                 // UI-101
 │   ├── TopBar.vue                   // 通用：标题 + 在线/离线背景色 + 右上角图标按钮（搜索 / 退出）
 │   ├── SearchBar.vue                // v-if showSearch（默认 false，由 TopBar 搜索图标切换）
@@ -369,9 +417,9 @@ App.vue
 ├── TagManageView.vue                // UI-103
 │   ├── TagList.vue
 │   └── TagEditDialog.vue
-├── MemberManageView.vue
+├── MemberManageView.vue             // 显示全部全局成员；每行带"全局" / "工作区名" badge
 │   ├── MemberList.vue
-│   └── MemberEditDialog.vue
+│   └── MemberEditDialog.vue         // 含"归属工作区"按钮组（[全局] + 各工作区，默认全局）
 ├── WorkspaceSettingsView.vue        // UI-104 工作区管理（增删改）
 └── AdminHomeView.vue                // UI-200 管理员主页（TopBar 右上角退出图标）
 ```

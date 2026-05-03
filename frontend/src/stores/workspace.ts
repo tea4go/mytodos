@@ -34,7 +34,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     const c = currentConfig.value
     if (!c) return null
     return {
-      schemaVersion: 2,
+      schemaVersion: 3,
       workspace: {
         workspaceId: c.workspaceId,
         name: c.name,
@@ -73,7 +73,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
    * 仅修改内存中的 global，不写远端。
    */
   function setMeta(m: WorkspaceMeta) {
-    if (!global.value) global.value = { schemaVersion: 2, workspaces: [], members: [], tags: [] }
+    if (!global.value) global.value = { schemaVersion: 3, workspaces: [], members: [], tags: [] }
     const existing = global.value.workspaces.find(w => w.workspaceId === m.workspace.workspaceId)
     const cfg: WorkspaceConfig = {
       workspaceId: m.workspace.workspaceId,
@@ -91,7 +91,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
 
   /** 直接写入全局配置中的工作区项（含 todosGistId）。 */
   function upsertWorkspaceConfig(cfg: WorkspaceConfig) {
-    if (!global.value) global.value = { schemaVersion: 2, workspaces: [], members: [], tags: [] }
+    if (!global.value) global.value = { schemaVersion: 3, workspaces: [], members: [], tags: [] }
     const idx = global.value.workspaces.findIndex(w => w.workspaceId === cfg.workspaceId)
     if (idx >= 0) global.value.workspaces[idx] = cfg
     else global.value.workspaces.push(cfg)

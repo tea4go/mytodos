@@ -1,7 +1,7 @@
 import { createGist, serializeTasks } from './api'
 import { fetchGlobalConfig, saveGlobalConfig } from './global'
 import { useWorkspaceStore } from '../stores/workspace'
-import type { Member, Tag, WorkspaceConfig, WorkspaceMeta } from '../types'
+import type { Member, Tag, WorkspaceConfig } from '../types'
 
 const DEFAULT_TAGS: Omit<Tag, 'createdAt'>[] = [
   { tagId: 'tag_chinese', name: '语文', color: '#E74C3C' },
@@ -19,23 +19,19 @@ const DEFAULT_TAGS: Omit<Tag, 'createdAt'>[] = [
 export interface CreateWorkspaceInput {
   name: string
   description: string
-  adminName: string
-  adminPassword: string
 }
 
 export interface CreateWorkspaceResult {
   workspaceId: string
   gistId: string
-  adminMember: Member
-  meta: WorkspaceMeta
+  workspaceConfig: WorkspaceConfig
 }
 
 /**
- * 创建工作区：
+ * 创建工作区（不含成员）：
  * 1) 新建一个 todos gist（仅 todos.json）
  * 2) 拉取全局配置 gist：
- *    - workspaces 追加新工作区基本信息（不含 members/tags）
- *    - global.members 中按 memberId 去重追加管理员
+ *    - workspaces 追加新工作区基本信息
  *    - global.tags 为空时一次性写入默认标签
  * 3) 写回全局配置 gist
  */
@@ -43,17 +39,11 @@ export async function createWorkspace(input: CreateWorkspaceInput): Promise<Crea
   const wsStore = useWorkspaceStore()
   const now = new Date().toISOString()
   const workspaceId = `ws_${Date.now()}`
-  const adminMember: Member = {
-    memberId: `m_${Date.now()}`,
-    displayName: input.adminName,
-    role: 'admin',
-    password: input.adminPassword,
-  }
   // 1) 新建 todos gist
   const todosGist = await createGist(`MyTodos: ${input.name}`, {
     'todos.json': serializeTasks([]),
   })
-  // 2) 拉取全局配置（首次部署时可能为空 schema）
+  // 2) 拉取全局配置
   const globalCfg = await fetchGlobalConfig()
   const cfg: WorkspaceConfig = {
     workspaceId,
@@ -64,10 +54,6 @@ export async function createWorkspace(input: CreateWorkspaceInput): Promise<Crea
     updatedAt: now,
   }
   globalCfg.workspaces.push(cfg)
-  // 全局成员：按 memberId 去重追加 admin
-  if (!globalCfg.members.some(m => m.memberId === adminMember.memberId)) {
-    globalCfg.members.push(adminMember)
-  }
   // 全局标签：仅在为空时一次性写入默认集合
   if (globalCfg.tags.length === 0) {
     for (const t of DEFAULT_TAGS) {
@@ -79,14 +65,33 @@ export async function createWorkspace(input: CreateWorkspaceInput): Promise<Crea
   // 同步 store
   wsStore.setGlobal(globalCfg)
 
-  const meta: WorkspaceMeta = {
-    schemaVersion: 2,
-    workspace: { workspaceId, name: cfg.name, description: cfg.description, createdAt: now, updatedAt: now },
-    members: globalCfg.members,
-    tags: globalCfg.tags,
-    revision: { remoteRevision: '' },
+  return { workspaceId, gistId: todosGist.id, workspaceConfig: cfg }
+}
+
+/**
+ * 创建初始管理员成员（首启向导第二步调用）。
+ * 将 admin 追加到全局 members 数组并写回。
+ */
+export async function createInitialAdmin(input: {
+  displayName: string
+  password: string
+  workspaceId: string | null
+}): Promise<Member> {
+  const wsStore = useWorkspaceStore()
+  const adminMember: Member = {
+    memberId: `m_${Date.now()}`,
+    displayName: input.displayName,
+    role: 'admin',
+    password: input.password,
+    workspaceId: input.workspaceId,
   }
-  return { workspaceId, gistId: todosGist.id, adminMember, meta }
+  const globalCfg = await fetchGlobalConfig()
+  if (!globalCfg.members.some(m => m.memberId === adminMember.memberId)) {
+    globalCfg.members.push(adminMember)
+  }
+  await saveGlobalConfig(globalCfg)
+  wsStore.setGlobal(globalCfg)
+  return adminMember
 }
 
 /**
@@ -133,11 +138,17 @@ export async function updateWorkspaceConfig(workspaceId: string, patch: { name?:
   wsStore.setGlobal(globalCfg)
 }
 
-/** 从全局配置中移除工作区（todos gist 不删除，留给开发者手工清理）。 */
+/** 从全局配置中移除工作区（todos gist 不删除，留给开发者手工清理）。挂在被删工作区的成员自动转为全局。 */
 export async function deleteWorkspace(workspaceId: string): Promise<void> {
   const wsStore = useWorkspaceStore()
   const globalCfg = await fetchGlobalConfig()
   globalCfg.workspaces = globalCfg.workspaces.filter(w => w.workspaceId !== workspaceId)
+  // 挂在被删工作区的成员自动转为全局
+  for (const m of globalCfg.members) {
+    if (m.workspaceId === workspaceId) {
+      m.workspaceId = null
+    }
+  }
   await saveGlobalConfig(globalCfg)
   wsStore.setGlobal(globalCfg)
   if (wsStore.currentWorkspaceId === workspaceId) {

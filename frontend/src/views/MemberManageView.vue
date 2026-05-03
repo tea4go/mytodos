@@ -37,13 +37,13 @@ onMounted(async () => {
 function onNew() { editingMember.value = null; dialogVisible.value = true }
 function onEdit(m: Member) { editingMember.value = m; dialogVisible.value = true }
 
-async function onSave(data: { displayName: string; role: Role; password?: string }) {
+async function onSave(data: { displayName: string; role: Role; password?: string; workspaceId: string | null }) {
   if (!wsStore.meta || !wsStore.currentGistId) return
   const now = new Date().toISOString()
   const newMembers = editingMember.value
     ? wsStore.meta.members.map(m =>
         m.memberId === editingMember.value!.memberId
-          ? { ...m, displayName: data.displayName, role: data.role, ...(data.password ? { password: data.password } : {}) }
+          ? { ...m, displayName: data.displayName, role: data.role, workspaceId: data.workspaceId, ...(data.password ? { password: data.password } : {}) }
           : m,
       )
     : [
@@ -53,6 +53,7 @@ async function onSave(data: { displayName: string; role: Role; password?: string
           displayName: data.displayName,
           role: data.role,
           password: data.password ?? '',
+          workspaceId: data.workspaceId,
         },
       ]
   const newMeta: WorkspaceMeta = { ...wsStore.meta, members: newMembers, workspace: { ...wsStore.meta.workspace, updatedAt: now } }

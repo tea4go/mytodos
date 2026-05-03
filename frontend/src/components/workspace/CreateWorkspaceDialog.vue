@@ -4,8 +4,6 @@
       <h3>创建工作区</h3>
       <label>名称 <input v-model="name" maxlength="100" placeholder="例：一中实验初中" /></label>
       <label>描述 <input v-model="description" placeholder="可选" maxlength="200" /></label>
-      <label>管理员显示名 <input v-model="adminName" maxlength="40" placeholder="例：老王" /></label>
-      <label>管理员密码 <input v-model="adminPassword" maxlength="6" placeholder="6位数字" /></label>
       <p v-if="error" class="error">{{ error }}</p>
       <div class="dialog-actions">
         <button @click="$emit('close')" class="btn-cancel">取消</button>
@@ -21,28 +19,20 @@ import { ref, computed } from 'vue'
 defineProps<{ visible: boolean }>()
 const emit = defineEmits<{
   close: []
-  create: [data: { name: string; description: string; adminName: string; adminPassword: string }]
+  create: [data: { name: string; description: string }]
 }>()
 
 const name = ref('')
 const description = ref('')
-const adminName = ref('')
-const adminPassword = ref('')
 const error = ref('')
 
-const valid = computed(() =>
-  name.value.trim() &&
-  adminName.value.trim() &&
-  /^\d{6}$/.test(adminPassword.value),
-)
+const valid = computed(() => name.value.trim().length > 0)
 
 function submit() {
   if (!valid.value) return
   emit('create', {
     name: name.value.trim(),
     description: description.value.trim(),
-    adminName: adminName.value.trim(),
-    adminPassword: adminPassword.value,
   })
 }
 </script>
