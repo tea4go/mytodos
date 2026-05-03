@@ -4,17 +4,6 @@
       <h2 class="title">MyTodos</h2>
     </div>
 
-    <!-- 工作区选择器 -->
-    <div class="ws-switcher">
-      <button
-        v-for="ws in wsStore.workspaces"
-        :key="ws.workspaceId"
-        :class="['ws-btn', { active: currentWsId === ws.workspaceId }]"
-        @click="switchWorkspace(ws.workspaceId)"
-      >{{ ws.name }}</button>
-      <p v-if="wsStore.workspaces.length === 0" class="empty-ws">暂无工作区</p>
-    </div>
-
     <template v-if="currentWsId">
       <!-- 管理员入口 -->
       <div class="admin-bar">
@@ -35,6 +24,17 @@
           </button>
         </div>
         <p v-if="normalMembers.length === 0" class="empty">该工作区暂无家长/学生成员，请先由管理员添加</p>
+
+        <!-- 工作区选择器 -->
+        <div v-if="wsStore.workspaces.length > 1" class="ws-switcher">
+          <span class="ws-label">切换工作区：</span>
+          <button
+            v-for="ws in wsStore.workspaces"
+            :key="ws.workspaceId"
+            :class="['ws-btn', { active: currentWsId === ws.workspaceId }]"
+            @click="switchWorkspace(ws.workspaceId)"
+          >{{ ws.name }}</button>
+        </div>
       </template>
 
       <template v-else-if="step === 'password' && pickedMember">
@@ -193,13 +193,13 @@ function roleText(r: Role) {
 
 /* 工作区选择器 */
 .ws-switcher { display: flex; gap: 8px; padding: 8px 4px; overflow-x: auto; margin-bottom: 16px; }
-.ws-btn { padding: 8px 16px; border: 2px solid #ddd; border-radius: 20px; background: #fff; cursor: pointer; font-size: 14px; white-space: nowrap; transition: all 0.15s; }
+.ws-btn { padding: 8px 16px; border: 2px solid #ddd; border-radius: 10px; background: #fff; cursor: pointer; font-size: 18px; white-space: nowrap; transition: all 0.15s; }
 .ws-btn.active { border-color: #4A90D9; background: #4A90D9; color: #fff; }
 .empty-ws { color: #999; font-size: 14px; }
 
 /* 管理员入口 */
 .admin-bar { text-align: right; margin-bottom: 12px; }
-.admin-btn { padding: 6px 14px; border: 1px solid #ddd; background: #fff; border-radius: 20px; font-size: 13px; cursor: pointer; }
+.admin-btn { padding: 6px 14px; border: 1px solid #ddd; background: #fff; border-radius: 10px; font-size: 13px; cursor: pointer; }
 .admin-btn.disabled { opacity: 0.4; cursor: not-allowed; }
 
 .hint { color: #555; font-size: 14px; margin: 12px 0; text-align: center; }
@@ -209,11 +209,11 @@ function roleText(r: Role) {
   padding: 20px 12px; border: 2px solid #ddd; border-radius: 12px; background: #fff; cursor: pointer;
 }
 .member-card:hover { border-color: #4A90D9; background: #EBF3FC; }
-.role-badge { padding: 2px 8px; border-radius: 8px; font-size: 12px; }
+.role-badge { padding: 2px 8px; border-radius: 8px; font-size: 18px; }
 .role-badge.parent { background: #FFF3CD; color: #F5A623; }
 .role-badge.student { background: #E8F5E9; color: #27AE60; }
 .role-badge.admin { background: #EBF3FC; color: #4A90D9; }
-.name { font-size: 16px; color: #333; }
+.name { font-size: 26px; color: #333; }
 .empty { text-align: center; color: #999; padding: 40px 20px; }
 .actions { text-align: center; margin-top: 16px; }
 .btn-cancel { padding: 8px 20px; border: 1px solid #ddd; background: #fff; border-radius: 8px; cursor: pointer; }
