@@ -11,7 +11,7 @@
       </div>
 
       <template v-if="step === 'pick'">
-        <p v-if="normalMembers.length > 0" class="hint">请选择登录成员：</p>
+        <p v-if="normalMembers.length > 0" class="hint">请选择登录帐号：</p>
         <div class="member-grid">
           <button
             v-for="m in normalMembers"
