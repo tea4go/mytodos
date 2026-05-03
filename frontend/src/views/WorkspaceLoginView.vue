@@ -1,7 +1,7 @@
 <template>
   <div class="login-page">
     <div class="header">
-      <h2 class="title">MyTodos</h2>
+      <h2 class="title">每日作业</h2>
     </div>
 
     <template v-if="currentWsId">
@@ -27,7 +27,7 @@
 
         <!-- 工作区选择器 -->
         <div v-if="wsStore.workspaces.length > 1" class="ws-switcher">
-          <span class="ws-label">切换工作区：</span>
+          <span class="ws-label">切换学校：</span>
           <button
             v-for="ws in wsStore.workspaces"
             :key="ws.workspaceId"
@@ -192,7 +192,8 @@ function roleText(r: Role) {
 .title { font-size: 24px; color: #4A90D9; margin: 0; font-weight: 600; }
 
 /* 工作区选择器 */
-.ws-switcher { display: flex; gap: 8px; padding: 8px 4px; overflow-x: auto; margin-bottom: 16px; }
+.ws-switcher { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px 4px; margin-top: 24px; }
+.ws-label { width: 100%; font-size: 14px; color: #999; }
 .ws-btn { padding: 8px 16px; border: 2px solid #ddd; border-radius: 10px; background: #fff; cursor: pointer; font-size: 18px; white-space: nowrap; transition: all 0.15s; }
 .ws-btn.active { border-color: #4A90D9; background: #4A90D9; color: #fff; }
 .empty-ws { color: #999; font-size: 14px; }
