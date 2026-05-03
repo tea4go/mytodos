@@ -38,10 +38,12 @@
       </template>
 
       <template v-else-if="step === 'password' && pickedMember">
-        <p class="hint">输入「{{ pickedMember.displayName }}」的 6 位口令：</p>
-        <PasswordInput :key="pwInputKey" :error="error" @complete="onPasswordComplete" />
-        <div class="actions">
-          <button class="btn-cancel" @click="backToPick">返回</button>
+        <div class="password-section">
+          <p class="hint">输入「{{ pickedMember.displayName }}」的 6 位口令：</p>
+          <PasswordInput :key="pwInputKey" :error="error" @complete="onPasswordComplete" />
+          <div class="actions">
+            <button class="btn-cancel" @click="backToPick">返回</button>
+          </div>
         </div>
       </template>
 
@@ -89,9 +91,12 @@ const currentWsId = ref<string | null>(null)
 const normalMembers = computed<Member[]>(() => {
   const wid = currentWsId.value
   if (!wid) return []
-  return (wsStore.meta?.members ?? wsStore.members).filter(m =>
+  const list = (wsStore.meta?.members ?? wsStore.members).filter(m =>
     m.role !== 'admin' && (m.workspaceId === wid || m.workspaceId == null),
   )
+  // 排序：parent 在前，student 在后；同角色保持原顺序
+  const order: Record<Role, number> = { parent: 0, student: 1, admin: 2 }
+  return [...list].sort((a, b) => order[a.role] - order[b.role])
 })
 
 const adminMembers = computed<Member[]>(() => {
@@ -204,6 +209,13 @@ function roleText(r: Role) {
 .admin-btn.disabled { opacity: 0.4; cursor: not-allowed; }
 
 .hint { color: #555; font-size: 14px; margin: 12px 0; text-align: center; }
+.password-section {
+  min-height: calc(100vh - 120px);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 16px;
+}
+.password-section .hint { font-size: 16px; margin: 0 0 8px; }
 .member-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; padding: 8px; }
 .member-card {
   display: flex; flex-direction: column; align-items: center; gap: 8px;

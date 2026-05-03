@@ -9,6 +9,7 @@ declare module '*.vue' {
 export {}
 
 declare global {
+  const __APP_VERSION__: string
   interface Window {
     __TAURI__?: {
       invoke: (cmd: string, args?: Record<string, unknown>) => Promise<any>

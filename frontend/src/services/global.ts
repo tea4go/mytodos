@@ -1,5 +1,5 @@
 import { fetchGist, updateGist } from './api'
-import type { GlobalConfig, GistResponse } from '../types'
+import type { GlobalConfig, GistResponse, ReleaseInfo } from '../types'
 
 /** 编译期注入的全局配置 gistId，缺失时抛错。 */
 export const GLOBAL_GIST_ID = (import.meta.env.VITE_GLOBAL_GIST_ID ?? '').trim()
@@ -62,6 +62,26 @@ export function parseGlobalFromGist(gist: GistResponse): GlobalConfig {
     workspaces,
     members,
     tags: aggregatedTags,
+    release: parseRelease(parsed.release),
+  }
+}
+
+function parseRelease(raw: any): ReleaseInfo | undefined {
+  if (!raw || typeof raw !== 'object') return undefined
+  if (typeof raw.latestVersion !== 'string' || typeof raw.minSupportedVersion !== 'string') return undefined
+  const urls = (raw.downloadUrls && typeof raw.downloadUrls === 'object') ? raw.downloadUrls : {}
+  return {
+    latestVersion: raw.latestVersion,
+    minSupportedVersion: raw.minSupportedVersion,
+    releasedAt: typeof raw.releasedAt === 'string' ? raw.releasedAt : '',
+    releaseNotes: typeof raw.releaseNotes === 'string' ? raw.releaseNotes : undefined,
+    downloadUrls: {
+      windows: urls.windows ?? undefined,
+      macos: urls.macos ?? undefined,
+      linux: urls.linux ?? undefined,
+      android: urls.android ?? undefined,
+      ios: urls.ios ?? null,
+    },
   }
 }
 

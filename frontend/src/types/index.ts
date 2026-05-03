@@ -59,6 +59,36 @@ export interface GlobalConfig {
   workspaces: WorkspaceConfig[]
   members: Member[]
   tags: Tag[]
+  release?: ReleaseInfo
+}
+
+// ===== 应用升级元数据（global.json 中的 release 字段） =====
+export interface ReleaseInfo {
+  latestVersion: string
+  minSupportedVersion: string
+  releasedAt: string
+  releaseNotes?: string
+  downloadUrls: {
+    windows?: string
+    macos?: string
+    linux?: string
+    android?: string
+    ios?: string | null
+  }
+}
+
+export type Platform = 'windows' | 'macos' | 'linux' | 'android' | 'ios'
+export type UpgradeLevel = 'none' | 'recommend' | 'force'
+
+export interface UpgradeDecision {
+  level: UpgradeLevel
+  current: string
+  latest?: string
+  minSupported?: string
+  url?: string
+  fileName?: string
+  notes?: string
+  platform: Platform
 }
 
 // ===== 工作区元数据（兼容旧 schema，已弃用，保留类型避免编译错误） =====

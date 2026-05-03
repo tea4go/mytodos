@@ -96,7 +96,7 @@ MyTodos 是一个无需自建后端的协作待办应用。所有团队数据以
 - 应用内置 Gitee PAT 与**全局配置 gistId（GLOBAL_GIST_ID）**，在编译时通过 `.env` 文件注入：
   - PAT：写入 `backend/src-tauri/.env` 的 `GITEE_PAT`，随每次 API 请求携带。
   - 全局配置 gistId：写入 `frontend/.env` 的 `VITE_GLOBAL_GIST_ID`，前端编译期注入。
-- 全局配置 gist 中保存三个并列数组：`workspaces`（工作区基本信息）、`members`（全局成员列表）、`tags`（全局标签列表），由所有终端用户共享读写。当前 schemaVersion = **3**。
+- 全局配置 gist 中保存四个并列字段：`workspaces`（工作区基本信息）、`members`（全局成员列表）、`tags`（全局标签列表）、`release`（应用最新版本与下载地址，可选；详见 FR-301），由所有终端用户共享读写。当前 schemaVersion = **3**。
 - **成员-工作区弱绑定**：每条成员记录可携带可选的 `workspaceId` 字段（可空，null 视为"全局成员"）。成员要么挂在某个具体工作区，要么是全局成员；不允许同时挂多个工作区。删除工作区时，挂在该工作区的成员自动转为全局成员（workspaceId 置 null）。
 - **标签为全局共享**：所有工作区共用同一份标签表，与成员归属无关。
 - 每个工作区另有独立的 todos gist，仅保存任务数据（todos.json），由工作区配置项中的 `todosGistId` 指向。
@@ -113,6 +113,7 @@ MyTodos 是一个无需自建后端的协作待办应用。所有团队数据以
 - 密码归属于成员（Member）。每位成员有独立的 6 位数字密码。
 - 工作区登录页（UI-002a）作为日常登录入口：
   - **成员候选过滤规则**：仅列出 `(member.workspaceId === 当前工作区Id || member.workspaceId == null) && member.role !== 'admin'` 的成员卡片，**不展示管理员**；既不属于当前工作区也不是全局成员的成员不出现。
+  - **成员排序规则**：先显示 `role === 'parent'` 的家长，再显示 `role === 'student'` 的学生；同角色内部保持原有顺序（按 `members` 数组下标）。
   - 点击成员卡片 → 输入该成员的 6 位数字密码 → 与全局配置 `members` 中该成员条目的 `password` 字段比对验证。
   - 页面右上角提供独立的「管理员入口」图标按钮：
     - 候选 admin = `members.find(m => m.role === 'admin' && (m.workspaceId === 当前工作区Id || m.workspaceId == null))`。
@@ -252,6 +253,27 @@ MyTodos 是一个无需自建后端的协作待办应用。所有团队数据以
   - 任务未完成（completedAt 为空）：显示「（已过 N 分钟 / N 小时 M 分钟 / N 天 M 小时）」，差值为 `now - startedAt`。
   - 任务已完成（completedAt 有值）：显示「（耗时 …）」，差值为 `completedAt - startedAt`。
 
+### 3.3 应用版本与自动升级
+
+**FR-301 自动升级检查**
+
+- 应用每次启动并成功拉取全局配置后，比对内置版本号 `__APP_VERSION__`（编译期由 `package.json` / `tauri.conf.json` 注入）与全局配置 `release` 字段：
+  - 全局配置无 `release` 字段：不提示升级，按现有流程继续。
+  - `__APP_VERSION__ < release.minSupportedVersion`：**强制升级**。在登录页之前弹出全屏对话框，仅提供「立即升级」按钮，无法跳过；点击后进入升级流程。强制升级期间禁止登录与同步。
+  - `release.minSupportedVersion <= __APP_VERSION__ < release.latestVersion`：**推荐升级**。在登录页加载完成后弹出对话框，提供「立即升级」与「稍后再说」；选择「稍后再说」后本次会话不再提示。
+  - `__APP_VERSION__ >= release.latestVersion`：不提示。
+- 版本号比较采用 [SemVer 2.0](https://semver.org/) 规则；非 SemVer 字符串视为低版本。
+- 升级流程（用户点击「立即升级」后）：
+  1. 按当前平台从 `release.downloadUrls.{windows|macos|linux|android}` 取下载地址；为空时提示「当前平台暂无升级包」并给出全局配置中的 `release.releaseNotes` 链接（若有）。
+  2. 通过 Rust 端（`commands::release::download_release`）流式下载到系统下载目录（Windows: `%USERPROFILE%/Downloads`；macOS/Linux: `~/Downloads`；Android: `/storage/emulated/0/Download`）。下载期间显示进度条与「取消」按钮。
+  3. 下载完成后弹出「下载完成，是否打开安装包？」提示：
+     - 桌面端：调用系统打开安装包文件（Windows `.msi`、macOS `.dmg`、Linux `.AppImage`）；
+     - Android：调用系统安装器（用户需授予「安装未知来源应用」权限）；
+     - iOS：暂不支持自动升级（按"App Store / TestFlight 自更新"对待，FR-301 不覆盖）。
+  4. 用户完成安装后手动重启应用；新版本启动时再次比对版本，符合条件则不再提示。
+- 下载失败、网络异常、用户取消时回到正常登录流程；强制升级时仍停留在升级页，提供「重试」按钮。
+- 全局配置无下载地址或地址无效时（HTTP 4xx/5xx），提示用户手动从 `release.releaseNotes` 中提供的渠道下载，不阻断使用（强制升级仍阻断登录）。
+
 ## 4. 外部接口需求
 
 ### 4.1 与 Gitee API 的交互
@@ -296,7 +318,7 @@ MyTodos 是一个无需自建后端的协作待办应用。所有团队数据以
 - 路由：`/login`，可在未登录状态访问。
 - 顶部：应用标题。
 - 右上角：「管理员」入口按钮（**仅在选人步骤显示，输入口令步骤自动隐藏**；仅当当前工���区有候选 admin 时可点击，无候选时置灰）。
-- 主体：提示"请选择登录帐号"，展示成员卡片列表，**只显示满足 `(workspaceId === 当前Id || workspaceId == null) && role !== 'admin'` 的成员**；点击卡片进入 6 位密码输入；密码与该成员的 `password` 字段比对。
+- 主体：提示"请选择登录帐号"，展示成员卡片列表，**只显示满足 `(workspaceId === 当前Id || workspaceId == null) && role !== 'admin'` 的成员**；**家长（parent）排在前，学生（student）排在后**；点击卡片进入 6 位密码输入；密码与该成员的 `password` 字段比对。
 - 底部：**工作区选择器**（仅当存在 ≥2 个工作区时显示；标签"切换工作区："独占一行，下方水平排列工作区按钮组；点击切换工作区后刷新成员列表）。
 - 登录成功：
   - parent / student → 跳 UI-101 任务列表页。
@@ -400,7 +422,20 @@ MyTodos 是一个无需自建后端的协作待办应用。所有团队数据以
   "tags": [                                   // array，全局标签列表（上限 20 个，所有工作区共享）
     { "tagId": "uuid", "name": "语文", "color": "#E74C3C", "createdAt": "2026-05-02T10:00:00Z" },
     { "tagId": "uuid", "name": "数学", "color": "#4A90D9", "createdAt": "2026-05-02T10:00:00Z" }
-  ]
+  ],
+  "release": {                                // object，应用版本与下载信息（可选；缺省时不提示升级）
+    "latestVersion": "1.2.0",                 // semver，推荐升级到的版本
+    "minSupportedVersion": "1.0.0",           // semver，低于该版本强制升级
+    "releasedAt": "2026-05-02T10:00:00Z",     // datetime，发布时间
+    "releaseNotes": "https://example.com/...", // string，发布说明 URL 或文本（可选）
+    "downloadUrls": {                          // object，按平台的安装包直链（值为 null 表示该平台暂无）
+      "windows": "https://example.com/mytodos-1.2.0-x64.msi",
+      "macos":   "https://example.com/mytodos-1.2.0-universal.dmg",
+      "linux":   "https://example.com/mytodos-1.2.0-amd64.AppImage",
+      "android": "https://example.com/mytodos-1.2.0.apk",
+      "ios":     null
+    }
+  }
 }
 ```
 

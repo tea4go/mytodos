@@ -104,6 +104,7 @@ stores/
 ├── workspace.ts     // 工作区列表、当前工作区、meta 数据
 ├── task.ts          // 任务列表、筛选条件、排序、搜索
 ├── tag.ts           // 标签列表
+├── release.ts       // 升级状态：当前版本、远端 release、用户本会话是否已忽略推荐升级
 └── ui.ts            // 加载状态、错误提示、网络状态
 ```
 
@@ -132,6 +133,21 @@ interface GlobalConfig {
   workspaces: WorkspaceConfig[]        // 工作区基本信息（不含成员/标签）
   members: Member[]                    // 全局成员列表（每条可挂在某工作区或全局）
   tags: Tag[]                          // 全局标签列表（所有工作区共享）
+  release?: ReleaseInfo                // 可选：应用升级元数据（v3 兼容；缺失视为不提示升级）
+}
+
+interface ReleaseInfo {
+  latestVersion: string                // SemVer，例 "1.2.0"
+  minSupportedVersion: string          // 低于此版本强制升级
+  releasedAt: string                   // ISO8601
+  releaseNotes?: string                // 可选发布说明 URL
+  downloadUrls: {
+    windows?: string
+    macos?: string
+    linux?: string
+    android?: string
+    ios?: string | null                // 通常为 null（iOS 不支持）
+  }
 }
 
 interface Member {
@@ -224,6 +240,80 @@ async fn secure_remove(key: String) -> Result<(), String>
 | `current_member_password` | "123456" | 当前成员的 6 位密码 |
 | `current_workspace_id` | UUID | 当前选中工作区 |
 | `gitee_pat` | token 字符串 | 编译时注入，运行时可更新 |
+
+### 5.3 应用升级模块
+
+#### 5.3.1 Rust 侧命令
+
+```rust
+#[tauri::command]
+async fn download_release(
+    url: String,
+    file_name: String,
+    window: tauri::Window,
+) -> Result<String, String>
+// 返回：本地下载完成的绝对路径
+// 流式写文件，按 256 KB 一次发出 release-download-progress 事件：
+//   { received: u64, total: Option<u64> }
+// 取消：前端通过 release-download-cancel 事件请求；命令侧轮询取消标志位中断写入并 cleanup。
+
+#[tauri::command]
+async fn open_path(path: String) -> Result<(), String>
+// 桌面端：调用系统 shell 打开安装包（msi/dmg/AppImage）
+// Android：通过 intent 触发系统安装器；iOS 直接返回错误（不支持）
+```
+
+下载目录：
+- Windows：`%USERPROFILE%/Downloads/`
+- macOS / Linux：`~/Downloads/`
+- Android：`/storage/emulated/0/Download/`（或 app-private cache 兜底）
+
+#### 5.3.2 前端服务层
+
+```typescript
+// services/release.ts
+export interface UpgradeDecision {
+  level: 'none' | 'recommend' | 'force'
+  current: string
+  latest?: string
+  minSupported?: string
+  url?: string                  // 当前平台下载地址；可能为空（强制升级时仍需提示）
+  notes?: string
+}
+
+export function decideUpgrade(currentVersion: string, info?: ReleaseInfo): UpgradeDecision
+export async function downloadRelease(url: string, fileName: string): Promise<string>
+export async function openInstaller(path: string): Promise<void>
+export function detectPlatform(): 'windows' | 'macos' | 'linux' | 'android' | 'ios'
+```
+
+#### 5.3.3 前端流程
+
+```
+App.vue mounted
+  ↓
+若已有 wsStore.global.release：直接 decideUpgrade
+否则等下一次 services/sync 拉取 global 后由 watch 触发
+  ↓
+decideUpgrade 返回：
+  - none      → 不弹窗
+  - recommend → 弹 UpgradeDialog（"立即升级" / "稍后再说"）；用户选稍后 → release.dismissed = true（仅本会话）
+  - force     → 弹 UpgradeDialog（仅"立即升级"，背板不可关闭，遮罩盖住路由层；登录/任务页操作均被遮挡）
+  ↓
+点"立即升级" → downloadRelease(url) 显示进度条 → 完成 → "下载完成，是否打开安装包？" → openInstaller(path)
+```
+
+`__APP_VERSION__` 由 Vite `define` 在编译期从 `package.json.version` 注入；与 `tauri.conf.json` 的 `version` 保持一致（构建脚本校验）。
+
+#### 5.3.4 错误处理
+
+| 场景 | 行为 |
+|------|------|
+| `release` 字段缺失 | level = 'none'，不提示 |
+| 当前平台 URL 为空（如 iOS） | level = 'force' 时提示"请通过 App Store 升级"；level = 'recommend' 时静默不提示 |
+| 下载中网络断开 / 服务器 4xx/5xx | 进度条转红，提示"下载失败，请重试"；保留对话框 |
+| 用户点取消 | 删除半成品文件，回到 UpgradeDialog 初始态 |
+| 强制升级时用户尝试关闭 | 不响应任何关闭手势/按键 |
 
 ---
 
@@ -364,6 +454,32 @@ function adminCandidate(all: Member[], workspaceId: string): Member | null {
 }
 ```
 
+### 7.6 SemVer 比较与升级判定
+
+```typescript
+// utils/semver.ts —— 仅支持 "X.Y.Z" 主版本号；忽略 prerelease/build metadata
+export function compareSemver(a: string, b: string): number {
+  const pa = a.split('.').map(n => parseInt(n, 10) || 0)
+  const pb = b.split('.').map(n => parseInt(n, 10) || 0)
+  for (let i = 0; i < 3; i++) {
+    const d = (pa[i] ?? 0) - (pb[i] ?? 0)
+    if (d !== 0) return d > 0 ? 1 : -1
+  }
+  return 0
+}
+
+export function decideUpgrade(current: string, info?: ReleaseInfo): UpgradeDecision {
+  if (!info || !info.latestVersion) return { level: 'none', current }
+  if (compareSemver(current, info.minSupportedVersion) < 0) {
+    return { level: 'force', current, latest: info.latestVersion, minSupported: info.minSupportedVersion, ... }
+  }
+  if (compareSemver(current, info.latestVersion) < 0) {
+    return { level: 'recommend', current, latest: info.latestVersion, ... }
+  }
+  return { level: 'none', current }
+}
+```
+
 ---
 
 ## 8. 权限控制矩阵
@@ -391,6 +507,7 @@ function adminCandidate(all: Member[], workspaceId: string): Member | null {
 
 ```
 App.vue
+├── UpgradeDialog.vue                // 全局升级弹层（推荐/强制两种模式；强制模式遮罩全屏不可关闭）
 ├── GuideView.vue                    // UI-001 首启两步向导（建工作区 → 建初始管理员）
 │   ├── CreateWorkspaceDialog.vue    // 仅含名称 + 描述（不再有管理员字段）
 │   └── InitialAdminForm.vue         // 显示名 + 6 位密码 + 归属工作区按钮组（默认刚建工作区）
@@ -398,7 +515,7 @@ App.vue
 │   ├── WorkspaceCard.vue
 │   └── CreateWorkspaceDialog.vue    // 已登录管理员可继续创建（同样仅名称 + 描述）
 ├─��� WorkspaceLoginView.vue           // UI-002a 登录页（提示"请选择登录帐号"；底部工作区选择器仅 ≥2 工作区时显示）
-│   ├── MemberPicker.vue             // 仅列 (workspaceId === 当前 || workspaceId == null) && role !== 'admin'
+│   ├── MemberPicker.vue             // 仅列 (workspaceId === 当前 || workspaceId == null) && role !== 'admin'；parent 排在前，student 排在后
 │   ├── PasswordInput.vue            // 6 位口令输入
 │   └── AdminLoginDialog.vue         // 管理员入口（仅选人步骤显示；候选 admin 按工作区过滤；无候选时置灰）
 ├── TaskListView.vue                 // UI-101
@@ -506,6 +623,7 @@ mytodos/
 │   │   ├── workspace.ts
 │   │   ├── task.ts
 │   │   ├── tag.ts
+│   │   ├── release.ts
 │   │   └── ui.ts
 │   ├── views/
 │   │   ├── GuideView.vue
@@ -537,15 +655,22 @@ mytodos/
 │   │   ├── tag/
 │   │   │   ├── TagList.vue
 │   │   │   └── TagEditDialog.vue
-│   │   └── member/
-│   │       ├── MemberList.vue
-│   │       └── MemberEditDialog.vue
+│   │   ├── member/
+│   │   │   ├── MemberList.vue
+│   │   │   └── MemberEditDialog.vue
+│   │   └── upgrade/
+│   │       └── UpgradeDialog.vue
+│   ├── services/
+│   │   ├── api.ts
+│   │   ├── sync.ts
+│   │   └── release.ts                // 升级判定、下载、打开安装器
 │   ├── types/
 │   │   └── index.ts
 │   ├── utils/
 │   │   ├── sort.ts
 │   │   ├── filter.ts
 │   │   ├── search.ts
+│   │   ├── semver.ts                 // SemVer 比较
 │   │   └── date.ts
 │   └── assets/
 │       └── styles/
@@ -555,7 +680,8 @@ mytodos/
 │   │   ├── main.rs
 │   │   ├── commands/
 │   │   │   ├── gist.rs           // Gitee API 命令
-│   │   │   └── secure_store.rs   // 安全存储命令
+│   │   │   ├── secure_store.rs   // 安全存储命令
+│   │   │   └── release.rs        // 升级包流式下载 / 打开安装器
 │   │   └── config.rs             // .env 配置读取
 │   ├── Cargo.toml
 │   └── .env                      // GITEE_PAT=xxx

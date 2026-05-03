@@ -1,7 +1,7 @@
 mod commands;
 mod config;
 
-use commands::{gist, secure_store};
+use commands::{gist, release, secure_store};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -14,6 +14,9 @@ pub fn run() {
             secure_store::secure_store,
             secure_store::secure_get,
             secure_store::secure_remove,
+            release::download_release,
+            release::cancel_download_release,
+            release::open_path,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
