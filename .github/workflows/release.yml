@@ -60,6 +60,13 @@ jobs:
         shell: bash
         run: echo "VITE_GLOBAL_GIST_ID=${{ secrets.VITE_GLOBAL_GIST_ID }}" > .env
 
+      - name: Set version from tag
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/" backend/src-tauri/tauri.conf.json
+          echo "Version set to $VERSION"
+
       # ---- Tauri 构建并发布 ----
       - name: Build and upload to Release
         uses: tauri-apps/tauri-action@v0
@@ -125,6 +132,12 @@ jobs:
       - name: Create frontend .env
         working-directory: frontend
         run: echo "VITE_GLOBAL_GIST_ID=${{ secrets.VITE_GLOBAL_GIST_ID }}" > .env
+
+      - name: Set version from tag
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/" backend/src-tauri/tauri.conf.json
+          echo "Version set to $VERSION"
 
       # ---- Android 签名配置 ----
       - name: Setup Android keystore
