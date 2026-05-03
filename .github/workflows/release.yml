@@ -153,9 +153,25 @@ jobs:
           echo "password=${{ secrets.KEYSTORE_PASSWORD }}" >> "$GEN/keystore.properties"
           echo "storeFile=../../../config/release.keystore" >> "$GEN/keystore.properties"
           FILE="$GEN/app/build.gradle.kts"
-          sed -i '1i import java.io.FileInputStream' "$FILE"
-          sed -i '/    buildTypes {/i\    signingConfigs {\n        create("release") {\n            val kpFile = rootProject.file("keystore.properties")\n            val kp = Properties()\n            if (kpFile.exists()) kp.load(java.io.FileInputStream(kpFile))\n            keyAlias = kp.getProperty("keyAlias", "")\n            keyPassword = kp.getProperty("password", "")\n            storeFile = file(kp.getProperty("storeFile", "./release.keystore"))\n            storePassword = kp.getProperty("password", "")\n        }\n    }' "$FILE"
-          sed -i '/getByName("release") {/a\            signingConfig = signingConfigs.getByName("release")' "$FILE"
+          python3 -c "
+          c = open('$FILE').read()
+          c = 'import java.io.FileInputStream\n' + c
+          c = c.replace('    buildTypes {', '''
+              signingConfigs {
+                  create(\"release\") {
+                      val kpFile = rootProject.file(\"keystore.properties\")
+                      val kp = Properties()
+                      if (kpFile.exists()) kp.load(FileInputStream(kpFile))
+                      keyAlias = kp.getProperty(\"keyAlias\", \"\")
+                      keyPassword = kp.getProperty(\"password\", \"\")
+                      storeFile = file(kp.getProperty(\"storeFile\", \"./release.keystore\"))
+                      storePassword = kp.getProperty(\"password\", \"\")
+                  }
+              }
+              buildTypes {''')
+          c = c.replace('getByName(\"release\") {', 'getByName(\"release\") {\n            signingConfig = signingConfigs.getByName(\"release\")')
+          open('$FILE', 'w').write(c)
+          "
 
       - name: Build Android APK
         run: pnpm tauri android build
