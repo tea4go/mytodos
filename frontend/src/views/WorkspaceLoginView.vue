@@ -5,8 +5,8 @@
     </div>
 
     <template v-if="currentWsId">
-      <!-- 管理员入口 -->
-      <div class="admin-bar">
+      <!-- 管理员入口（仅选人步骤显示） -->
+      <div v-if="step === 'pick'" class="admin-bar">
         <button class="admin-btn" :class="{ disabled: !adminAvailable }" :title="adminAvailable ? '管理员入口' : '该工作区暂无管理员'" @click="adminAvailable && (showAdminDialog = true)">⚙️ 管理员</button>
       </div>
 
