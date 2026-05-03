@@ -175,6 +175,7 @@ jobs:
               }
               buildTypes {''')
           c = c.replace('getByName(\"release\") {', 'getByName(\"release\") {\n            signingConfig = signingConfigs.getByName(\"release\")')
+          c = c.replace('isMinifyEnabled = true', 'isMinifyEnabled = false')
           open('$FILE', 'w').write(c)
           "
 
