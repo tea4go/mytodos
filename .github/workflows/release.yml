@@ -152,6 +152,8 @@ jobs:
           echo "keyAlias=${{ secrets.KEYSTORE_ALIAS }}" > "$GEN/keystore.properties"
           echo "password=${{ secrets.KEYSTORE_PASSWORD }}" >> "$GEN/keystore.properties"
           echo "storeFile=../../../../../config/release.keystore" >> "$GEN/keystore.properties"
+          echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" >> "$GEN/keystore.properties"
+          echo "keystoreType=PKCS12" >> "$GEN/keystore.properties"
           FILE="$GEN/app/build.gradle.kts"
           python3 -c "
           c = open('$FILE').read()
@@ -166,6 +168,7 @@ jobs:
                       keyPassword = kp.getProperty(\"password\", \"\")
                       storeFile = file(kp.getProperty(\"storeFile\", \"./release.keystore\"))
                       storePassword = kp.getProperty(\"password\", \"\")
+                      storeType = kp.getProperty(\"keystoreType\", \"\")
                   }
               }
               buildTypes {''')
