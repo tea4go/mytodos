@@ -25,7 +25,7 @@
       />
       <p v-if="taskStore.filteredTasks.length === 0" class="empty">暂无任务</p>
     </div>
-    <AddTaskButton v-if="auth.role === 'parent'" @click="showCreate = true" />
+    <AddTaskButton v-if="auth.role === 'parent'" @click="openCreate" />
     <div v-if="showCreate" class="dialog-overlay" @click.self="showCreate = false">
       <div class="dialog">
         <h3>新建任务</h3>
@@ -70,12 +70,13 @@ function emptyTask(): Task {
   d.setHours(21, 0, 0, 0)
   const pad = (n: number) => String(n).padStart(2, '0')
   const dueAt = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T21:00`
+  const defaultTagId = wsStore.tags[0]?.tagId
   return {
     taskId: `task_${Date.now()}`,
     title: '', description: '',
     status: 'todo', priority: 'medium',
     dueAt, assigneeId: '',
-    tagIds: [], startedAt: null,
+    tagIds: defaultTagId ? [defaultTagId] : [], startedAt: null,
     createdAt: now, createdBy: auth.currentMemberId ?? '',
     updatedAt: now, updatedBy: auth.currentMemberId ?? '',
     completedAt: null, completedBy: null,
@@ -130,6 +131,15 @@ async function handleCreate(task: Task) {
   await appendTask(wsStore.currentGistId, task)
   showCreate.value = false
   newTask.value = emptyTask()
+}
+
+function openCreate() {
+  if (wsStore.tags.length === 0) {
+    ui.setError('请先在标签管理中添加标签后再新建任务')
+    return
+  }
+  newTask.value = emptyTask()
+  showCreate.value = true
 }
 
 async function onLogout() {

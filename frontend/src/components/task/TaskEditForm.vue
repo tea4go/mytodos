@@ -30,19 +30,20 @@
       </div>
     </label>
     <label>指派人
-      <select v-model="form.assigneeId">
-        <option v-for="m in studentMembers" :key="m.memberId" :value="m.memberId">{{ m.displayName }}</option>
-      </select>
+      <div class="btn-group" role="radiogroup" aria-label="指派人">
+        <button
+          v-for="m in studentMembers"
+          :key="m.memberId"
+          type="button"
+          role="radio"
+          :aria-checked="form.assigneeId === m.memberId"
+          :class="['group-btn', { active: form.assigneeId === m.memberId }]"
+          @click="form.assigneeId = m.memberId"
+        >{{ m.displayName }}</button>
+      </div>
     </label>
     <label>标签
       <div class="btn-group tag-group" role="radiogroup" aria-label="标签">
-        <button
-          type="button"
-          role="radio"
-          :aria-checked="selectedTagId === ''"
-          :class="['group-btn', 'tag-btn', { active: selectedTagId === '' }]"
-          @click="selectedTagId = ''"
-        >（无）</button>
         <button
           v-for="t in tags"
           :key="t.tagId"
@@ -88,7 +89,7 @@ const selectedTagId = computed<string>({
   get: () => form.tagIds[0] ?? '',
   set: (v: string) => { form.tagIds = v ? [v] : [] },
 })
-const valid = computed(() => form.title.trim().length > 0)
+const valid = computed(() => form.title.trim().length > 0 && form.tagIds.length > 0)
 
 function submit() { emit('save', { ...form }) }
 </script>
@@ -103,6 +104,7 @@ function submit() { emit('save', { ...form }) }
 .priority-btn.active.p-high { background: #E74C3C; color: #fff; border-color: #E74C3C; }
 .btn-group { display: flex; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
 .group-btn { padding: 8px 14px; border: 1px solid #ddd; background: #fff; border-radius: 8px; font-size: 14px; cursor: pointer; transition: all 0.15s; }
+.group-btn.active { background: #4A90D9; color: #fff; border-color: #4A90D9; }
 .group-btn.s-todo.active { background: #4A90D9; color: #fff; border-color: #4A90D9; }
 .group-btn.s-doing.active { background: #F5A623; color: #fff; border-color: #F5A623; }
 .group-btn.s-done.active { background: #27AE60; color: #fff; border-color: #27AE60; }

@@ -364,7 +364,7 @@ App.vue
 │   └── AddTaskButton.vue            // 仅家长可见
 ├── TaskDetailView.vue               // UI-102（新增显示 开始时间 / 完成时间 / 标签）
 │   ├── TaskFieldDisplay.vue
-│   ├── TaskEditForm.vue             // 仅家长（创建态隐藏「状态」字段；状态/优先级/标签均使用按钮组；指派人下拉仅 student；标签单选）
+│   ├── TaskEditForm.vue             // 仅家长（创建态隐藏「状态」字段；状态/优先级/指派人/标签均使用按钮组；指派人按钮组仅列 student；标签必选，无"（无）"选项，新建默认取第一个标签）
 │   └── TaskStatusActions.vue        // 仅学生/家长
 ├── TagManageView.vue                // UI-103
 │   ├── TagList.vue
