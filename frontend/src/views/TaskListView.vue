@@ -19,6 +19,7 @@
         :can-complete="canComplete(t)"
         :assignee-name="getMemberName(t.assigneeId)"
         :get-tag-color="getTagColor"
+        :get-tag-name="getTagName"
         @click="goDetail"
         @toggle="toggleDone"
       />
@@ -101,6 +102,9 @@ function getMemberName(id: string): string {
 }
 function getTagColor(tagId: string): string {
   return wsStore.tags.find(t => t.tagId === tagId)?.color ?? '#ccc'
+}
+function getTagName(tagId: string): string {
+  return wsStore.tags.find(t => t.tagId === tagId)?.name ?? ''
 }
 function canComplete(t: Task): boolean {
   return auth.role === 'student' && t.assigneeId === auth.currentMemberId

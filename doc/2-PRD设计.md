@@ -149,19 +149,21 @@ interface WorkspaceConfig {
 
 ```typescript
 interface TaskState {
-  tasks: Task[]                    // 任务列表
+  tasks: Task[]                    // 任务列表（家长可见全部；学生在 filteredTasks 中按 assigneeId 过滤）
   filter: {
-    status: TaskStatus | null      // 状态筛选
+    status: TaskStatus | null      // 状态筛选（默认 'todo'）
     assigneeId: string | null      // 指派人筛选
-    dueDate: 'today' | 'week' | 'overdue' | null  // 截止筛选
+    dueDate: 'today' | 'week' | 'overdue' | null  // 截止筛选（默认 'today'，学生进入时强制为 null）
     tagIds: string[]               // 标签筛选（多选）
-    viewMode: 'active' | 'done'    // 学生视图模式
+    viewMode: 'active' | 'done'    // 学生视图模式（'active' = todo+doing；'done' = done）
   }
   sort: SortRule                    // 排序规则
-  searchKeyword: string             // 搜索关键词
+  searchKeyword: string             // 搜索关键词（搜索框默认隐藏）
   loading: boolean                  // 加载状态
 }
 ```
+
+**学生角色可见性**：`filteredTasks` 计算属性在过滤前先按 `auth.role === 'student'` 时 `t.assigneeId === auth.currentMemberId` 收紧数据，使学生看不到他人任务。
 
 ---
 
@@ -353,19 +355,16 @@ App.vue
 │   ├── PasswordInput.vue            // 6 位口令输入
 │   └── AdminLoginDialog.vue         // 右上角管理员入口（输入 admin 成员密码）
 ├── TaskListView.vue                 // UI-101
-│   ├── TopBar.vue                   // 工作区名称 + 网络状态
-│   ├── SearchBar.vue
+│   ├── TopBar.vue                   // 通用：标题 + 在线/离线背景色 + 右上角图标按钮（搜索 / 退出）
+│   ├── SearchBar.vue                // v-if showSearch（默认 false，由 TopBar 搜索图标切换）
 │   ├── FilterBar.vue
-│   │   ├── StatusFilter.vue         // 家长：状态筛选
-│   │   ├── AssigneeFilter.vue       // 家长：指派人筛选
-│   │   ├── DueDateFilter.vue        // 家长：截止日期筛选
-│   │   ├── TagFilter.vue            // 家长：标签筛选
-│   │   └── ViewModeSwitch.vue       // 学生：进行中/完成切换
-│   ├── TaskItem.vue                 // 列表项
+│   │   ├── 家长：状态、指派人、截止日期、标签筛选（默认状态=todo、截止=today）
+│   │   └── 学生：待办/进行中/完成 三按钮 + 红色数字角标（默认选中"待办"）
+│   ├── TaskItem.vue                 // 列表项（含标签色块 + 名称）
 │   └── AddTaskButton.vue            // 仅家长可见
-├── TaskDetailView.vue               // UI-102
+├── TaskDetailView.vue               // UI-102（新增显示 开始时间 / 完成时间 / 标签）
 │   ├── TaskFieldDisplay.vue
-│   ├── TaskEditForm.vue             // 仅家长
+│   ├── TaskEditForm.vue             // 仅家长（创建态隐藏「状态」字段；指派人下拉仅 student；标签单选）
 │   └── TaskStatusActions.vue        // 仅学生/家长
 ├── TagManageView.vue                // UI-103
 │   ├── TagList.vue
@@ -373,8 +372,8 @@ App.vue
 ├── MemberManageView.vue
 │   ├── MemberList.vue
 │   └── MemberEditDialog.vue
-├── WorkspaceSettingsView.vue        // UI-104 工作区设置（编辑名称/描述、查看 gistId）
-└── AdminHomeView.vue                // UI-200 管理员主页（成员/标签/工作区设置三入口）
+├── WorkspaceSettingsView.vue        // UI-104 工作区管理（增删改）
+└── AdminHomeView.vue                // UI-200 管理员主页（TopBar 右上角退出图标）
 ```
 
 ---

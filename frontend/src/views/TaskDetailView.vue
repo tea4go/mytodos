@@ -18,6 +18,20 @@
           </strong>
         </div>
         <div class="info-row"><span>完成时间</span><strong>{{ task.completedAt ? formatDateTime(task.completedAt) : '—' }}</strong></div>
+        <div class="info-row">
+          <span>标签</span>
+          <strong>
+            <template v-if="taskTags.length">
+              <span
+                v-for="t in taskTags"
+                :key="t.tagId"
+                class="tag-chip"
+                :style="{ background: t.color }"
+              >{{ t.name }}</span>
+            </template>
+            <template v-else>—</template>
+          </strong>
+        </div>
 
         <div class="action-bar">
           <template v-if="auth.role === 'student' && task.assigneeId === auth.currentMemberId">
@@ -63,6 +77,12 @@ const editing = ref(false)
 
 const task = computed(() => taskStore.tasks.find(t => t.taskId === route.params.taskId))
 const assigneeName = computed(() => wsStore.members.find(m => m.memberId === task.value?.assigneeId)?.displayName ?? '未指派')
+const taskTags = computed(() => {
+  const ids = task.value?.tagIds ?? []
+  return ids
+    .map(id => wsStore.tags.find(t => t.tagId === id))
+    .filter((t): t is NonNullable<typeof t> => !!t)
+})
 
 const nowTick = ref(Date.now())
 let timer: number | undefined
@@ -135,6 +155,8 @@ async function handleSave(updated: Task) {
 .info-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f0f0f0; }
 .info-row span { color: #999; }
 .info-row .elapsed { color: #999; font-weight: normal; margin-left: 6px; font-size: 13px; }
+.info-row .tag-chip { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 10px; color: #fff; font-size: 12px; line-height: 18px; margin-left: 6px; }
+.info-row .tag-chip:first-child { margin-left: 0; }
 .action-bar { display: flex; gap: 12px; margin-top: 24px; }
 .action-bar button { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 8px; background: #fff; cursor: pointer; font-size: 15px; }
 .action-bar button.primary { background: #4A90D9; color: #fff; border-color: #4A90D9; }
