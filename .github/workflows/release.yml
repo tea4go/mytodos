@@ -129,6 +129,7 @@ jobs:
       # ---- Android 签名配置 ----
       - name: Setup Android keystore
         run: |
+          mkdir -p config
           echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 -d > config/release.keystore
           cat > config/keystore.properties <<EOF
           keyAlias=${{ secrets.KEYSTORE_ALIAS }}
