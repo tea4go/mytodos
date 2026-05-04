@@ -56,6 +56,53 @@ Tauri 依赖的 `tao` 和 `wry` 库在 Android 端使用 JNI 调用 `Activity.ge
 - `patches/wry-0.55.0/`：修补 `android/mod.rs`，应用相同的回退逻辑。
 - Android 日志：使用 `android_logger` + `log` crate 将 Rust 日志输出到 logcat，`lib.rs` 中设置 panic hook 捕获崩溃信息。
 
+### 2.4 Android 真机调试与日志规范
+
+**目的**：统一 USB 真机端「构建 → 安装 → 抓日志 → 修复」的操作链路，配合 SRS NFR-303 与 doc/3-TEST TC-503 使用。
+
+**应用包名与可执行 ID**
+
+| 项目 | 取值 |
+|------|------|
+| Android `applicationId` | `com.mytodos.app`（取自 `backend/src-tauri/tauri.conf.json` 的 `identifier`） |
+| 主 Activity | `com.mytodos.app.MainActivity`（Tauri 模板生成） |
+| Rust logcat tag | `mytodos`（`lib.rs` 通过 `android_logger::Config::default().with_tag("mytodos")` 设置） |
+
+**构建命令（统一入口）**
+
+| 用途 | 命令 | 输出 APK 路径 |
+|------|------|---------------|
+| Debug 构建（默认调试） | `pnpm tauri android build --apk --debug` | `backend/src-tauri/gen/android/app/build/outputs/apk/universal/debug/app-universal-debug.apk` |
+| Release 构建（验证签名链路） | `pnpm tauri android build --apk` | `backend/src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk` |
+
+> 首次构建前需保证 `pnpm tauri android init` 已执行、Android SDK / NDK 环境变量配置完成（参考 `scripts/windows/install_android_bywin.ps1`）。
+
+**ADB 调试命令清单**
+
+| 场景 | 命令 |
+|------|------|
+| 探测设备 | `adb devices -l` |
+| 重启 ADB 服务（识别异常时） | `adb kill-server && adb start-server && adb devices` |
+| 安装/覆盖安装 | `adb install -r <apk_path>` |
+| 卸载 | `adb uninstall com.mytodos.app` |
+| 启动应用 | `adb shell am start -n com.mytodos.app/.MainActivity` |
+| 强停应用 | `adb shell am force-stop com.mytodos.app` |
+| 清理旧 logcat 缓冲 | `adb logcat -c` |
+| 抓取 Rust 日志 | `adb logcat -s mytodos:V` |
+| 抓取启动 + 崩溃合集 | `adb logcat -v time AndroidRuntime:E DEBUG:E mytodos:V *:S` |
+| Tombstone 崩溃栈 | `adb shell ls /data/tombstones`（root 设备）或 `adb logcat -b crash` |
+
+**关键日志锚点**
+
+- 应用进程启动成功：logcat 中应出现 `mytodos lib loaded`（`lib.rs` 启动期写入）。
+- WebView 初始化成功：tag `chromium` / `wry` 无 `Fatal` 级别日志。
+- Rust panic：tag `mytodos` 出现 `panicked at` 字样，伴随文件:行号；视为阻塞性故障。
+- TLS / 网络异常：tag `mytodos` 出现 `reqwest` / `native-tls` / `rustls` 错误。
+
+**真机调试故障归档约定**
+
+每次在真机上发现的崩溃或异常，需在 doc/3-TEST 对应的 TC-503 表格内补一行「现象 → logcat 关键片段 → 根因 → 修复 commit / 文件」，便于后续排查同类问题。
+
 ---
 
 ## 3. 路由设计

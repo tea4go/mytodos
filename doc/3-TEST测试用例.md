@@ -706,6 +706,56 @@
 
 ---
 
+### TC-503 USB 真机调试端到端流程（构建-安装-诊断-修复闭环）
+
+| 项目 | 内容 |
+|------|------|
+| **对应 FR** | NFR-303 |
+| **前置条件** | 1) 真机已用 USB 连接开发机并开启「USB 调试」；2) `adb devices -l` 能识别到设备序列号；3) Android SDK/NDK 环境变量已配置；4) `backend/src-tauri/.env` 与 `frontend/.env` 中的 PAT、GLOBAL_GIST_ID 已配置 |
+| **优先级** | P0 |
+
+**步骤 A — 设备识别**
+
+| 步骤 | 操作 | 预期结果 |
+|------|------|----------|
+| A1 | `adb devices -l` | 输出非空，列出设备序列号与型号；状态为 `device`（不是 `unauthorized` / `offline`） |
+| A2 | 设备状态异常时 `adb kill-server && adb start-server && adb devices` | 重启后能识别 |
+
+**步骤 B — 构建 Debug APK**
+
+| 步骤 | 操作 | 预期结果 |
+|------|------|----------|
+| B1 | `pnpm tauri android build --apk --debug` | 退出码为 0；产物位于 `backend/src-tauri/gen/android/app/build/outputs/apk/universal/debug/app-universal-debug.apk` |
+| B2 | 构建失败 | 在 doc/3-TEST 故障表中归档 stderr，并按 systematic-debugging 流程定位（patch、依赖版本、NDK 版本） |
+
+**步骤 C — 安装与启动**
+
+| 步骤 | 操作 | 预期结果 |
+|------|------|----------|
+| C1 | `adb install -r <apk_path>` | 输出 `Success` |
+| C2 | `adb logcat -c`（清缓冲）| 立即返回 |
+| C3 | `adb shell am start -n com.mytodos.app/.MainActivity` | 输出 `Starting: Intent ...`；屏幕亮起应用界面 |
+
+**步骤 D — 抓取并判定日志**
+
+| 步骤 | 操作 | 预期结果 |
+|------|------|----------|
+| D1 | `adb logcat -v time AndroidRuntime:E DEBUG:E mytodos:V *:S`（保留 30 秒）| 出现 `mytodos lib loaded`；不出现 `FATAL EXCEPTION` / `Fatal signal` / `panicked at` |
+| D2 | 进入引导页 → 登录页 → 任务列表，每步停留 5 秒 | WebView 渲染正常；logcat 无 ERROR 级别异常增加 |
+| D3 | 触发一次远端拉取（如登录或刷新任务） | 不出现 `reqwest` / `tls` / `connection` 相关错误；任务/工作区数据正常返回 |
+
+**步骤 E — 异常归档与修复闭环**
+
+若 D1~D3 出现错误，按以下格式追加到下方故障表：
+
+| 现象 | logcat 关键片段 | 根因 | 修复 commit / 文件 |
+|------|----------------|------|---------------------|
+| _（待发现时填写）_ | _（粘贴异常前后 5~10 行）_ | _（分析出的真实原因）_ | _（修复对应的 commit hash 或文件路径）_ |
+
+修复后必须重跑 B → C → D 三步，所有期望项均通过才能关闭本轮调试。
+
+---
+
 ## 8. 应用升级测试
 
 ### TC-601 全局配置无 release 字段

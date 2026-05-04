@@ -507,6 +507,7 @@ MyTodos 是一个无需自建后端的协作待办应用。所有团队数据以
 
 - **NFR-301 平台兼容**：Android/iOS 适配主流分辨率与深色模式（可选）。Android 最低支持 API 24（Android 7.0），已验证 API 27（Android 8.1）兼容性。
 - **NFR-302 可迁移**：支持将工作区数据迁移至新的 gistId（管理员操作，在 FR-003 工作区编辑功能中实现）。
+- **NFR-303 真机可启动性（发布门禁）**：Android Debug / Release APK 在每次合入主干、发布前，必须在 USB 连接的真机上完成「安装-启动-基础导航」三步检查，且 `adb logcat` 中**不得出现** `FATAL EXCEPTION`、`AndroidRuntime` 进程崩溃、`libc fatal signal`、未捕获的 Rust panic。出现以上任一情况视为发布阻塞缺陷，必须先在 doc/3-TEST 中按 TC-503 流程归档现象、根因与修复方案，再修复并复测通过。
 
 ### 7.5 易用性
 
