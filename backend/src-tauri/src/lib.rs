@@ -1,5 +1,6 @@
 mod commands;
 mod config;
+mod log_helper;
 
 use commands::{gist, release, secure_store};
 
@@ -34,6 +35,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![
+            log_helper::log_frontend,
             gist::gist_get,
             gist::gist_create,
             gist::gist_update,

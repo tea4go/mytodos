@@ -4,6 +4,9 @@ import { useWorkspaceStore } from '../stores/workspace'
 import { useTaskStore } from '../stores/task'
 import { useUiStore } from '../stores/ui'
 import type { Task, WorkspaceMeta } from '../types'
+import * as logHelper from './log_helper'
+
+const TAG = 'sync'
 
 /** 从全局 gist 拉取所有工作区配置，写入 store。 */
 export async function loadGlobal(): Promise<void> {
@@ -13,8 +16,10 @@ export async function loadGlobal(): Promise<void> {
   try {
     const cfg = await fetchGlobalConfig()
     wsStore.setGlobal(cfg)
+    await logHelper.info(TAG, 'loadGlobal 成功')
   } catch (e: any) {
-    ui.setError(`加载全局配置失败: ${e}`)
+    const msg = `加载全局配置失败: ${e}`
+    await logHelper.handleApiError(TAG, 'loadGlobal', e, (m) => ui.setError(m))
     throw e
   } finally {
     ui.setLoading(false)
@@ -31,8 +36,9 @@ export async function loadWorkspace(todosGistId: string): Promise<void> {
     const gist = await fetchGist(todosGistId)
     const tasks = parseTasksFromGist(gist)
     taskStore.setTasks(tasks as Task[])
+    await logHelper.info(TAG, `loadWorkspace 成功: gistId=${todosGistId}, tasks=${tasks.length}`)
   } catch (e: any) {
-    ui.setError(`加载任务失败: ${e}`)
+    await logHelper.handleApiError(TAG, `loadWorkspace(gistId=${todosGistId})`, e, (m) => ui.setError(m))
     throw e
   } finally {
     ui.setLoading(false)
@@ -54,8 +60,9 @@ export async function saveTaskUpdate(
     if (idx !== -1) allTasks[idx] = { ...allTasks[idx], ...updates }
     await updateGist(todosGistId, { 'todos.json': serializeTasks(allTasks) })
     taskStore.updateTask(taskId, updates)
+    await logHelper.info(TAG, `saveTaskUpdate 成功: taskId=${taskId}, updates=${JSON.stringify(updates)}`)
   } catch (e: any) {
-    ui.setError(`保存失败: ${e}`)
+    await logHelper.handleApiError(TAG, `saveTaskUpdate(taskId=${taskId})`, e, (m) => ui.setError(m))
     throw e
   } finally {
     ui.setLoading(false)
@@ -72,8 +79,9 @@ export async function appendTask(todosGistId: string, task: Task): Promise<void>
     allTasks.push(task)
     await updateGist(todosGistId, { 'todos.json': serializeTasks(allTasks) })
     taskStore.addTask(task)
+    await logHelper.info(TAG, `appendTask 成功: taskId=${task.taskId}, title=${task.title}`)
   } catch (e: any) {
-    ui.setError(`创建任务失败: ${e}`)
+    await logHelper.handleApiError(TAG, `appendTask(title=${task.title})`, e, (m) => ui.setError(m))
     throw e
   } finally {
     ui.setLoading(false)
@@ -89,14 +97,13 @@ export async function saveMeta(_todosGistId: string, meta: WorkspaceMeta): Promi
   const ui = useUiStore()
   ui.setLoading(true)
   try {
-    // 1) 更新内存中的全局配置
     wsStore.setMeta(meta)
-    // 2) 写回全局 gist
     if (wsStore.global) {
       await saveGlobalConfig(wsStore.global)
     }
+    await logHelper.info(TAG, 'saveMeta 成功')
   } catch (e: any) {
-    ui.setError(`保存元数据失败: ${e}`)
+    await logHelper.handleApiError(TAG, 'saveMeta', e, (m) => ui.setError(m))
     throw e
   } finally {
     ui.setLoading(false)

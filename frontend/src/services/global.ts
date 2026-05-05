@@ -6,6 +6,7 @@ export const GLOBAL_GIST_ID = (import.meta.env.VITE_GLOBAL_GIST_ID ?? '').trim()
 
 export function ensureGlobalGistId(): string {
   if (!GLOBAL_GIST_ID) {
+    logHelper.error(TAG, '未配置 VITE_GLOBAL_GIST_ID')
     throw new Error('未配置 VITE_GLOBAL_GIST_ID，请在 frontend/.env 中设置')
   }
   return GLOBAL_GIST_ID
