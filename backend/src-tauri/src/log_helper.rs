@@ -16,7 +16,7 @@
 use chrono::Local;
 use once_cell::sync::Lazy;
 use std::fs::{self, OpenOptions};
-use std::io::{Write, BufReader, BufRead};
+use std::io::Write;
 use std::net::{TcpStream, ToSocketAddrs};
 use std::path::PathBuf;
 use std::sync::Mutex;
@@ -297,6 +297,7 @@ pub struct Logger {
     console: Mutex<ConsoleWriter>,
     file: Mutex<FileWriter>,
     conn: Mutex<Option<ConnWriter>>,
+    level: log::LevelFilter,
 }
 
 impl Logger {
@@ -308,6 +309,7 @@ impl Logger {
             console: Mutex::new(ConsoleWriter::new(level, true)),
             file: Mutex::new(fw),
             conn: Mutex::new(None),
+            level: log_level_to_filter(level),
         }
     }
 
@@ -474,4 +476,63 @@ pub async fn log_frontend(level: u8, message: String) -> Result<(), String> {
     let level = level.min(LEVEL_DEBUG);
     LOGGER.write_simple(level, &message);
     Ok(())
+}
+
+// ====== 对接 log crate 门面 ======
+
+fn log_level_to_filter(lvl: u8) -> log::LevelFilter {
+    match lvl {
+        0 => log::LevelFilter::Error,      // Emergency => Error
+        1 => log::LevelFilter::Error,      // Alert     => Error
+        2 => log::LevelFilter::Error,      // Critical  => Error
+        3 => log::LevelFilter::Error,      // Error     => Error
+        4 => log::LevelFilter::Warn,       // Warning   => Warn
+        5 => log::LevelFilter::Info,       // Notice    => Info
+        6 => log::LevelFilter::Info,       // Info      => Info
+        7 => log::LevelFilter::Debug,      // Debug     => Debug
+        _ => log::LevelFilter::Debug,
+    }
+}
+
+fn mytodos_level_from_log(lvl: log::Level) -> u8 {
+    match lvl {
+        log::Level::Error => LEVEL_ERROR,
+        log::Level::Warn => LEVEL_WARNING,
+        log::Level::Info => LEVEL_NOTICE,
+        log::Level::Debug => LEVEL_DEBUG,
+        log::Level::Trace => LEVEL_DEBUG,
+    }
+}
+
+impl log::Log for Logger {
+    fn enabled(&self, metadata: &log::Metadata) -> bool {
+        metadata.level() <= self.level
+    }
+
+    fn log(&self, record: &log::Record) {
+        if !self.enabled(record.metadata()) {
+            return;
+        }
+        let lvl = mytodos_level_from_log(record.level());
+        let file = record.file().unwrap_or("<unknown>");
+        let line = record.line().unwrap_or(0);
+        let func = record.target();
+        let msg = format!("{}", record.args());
+        self.write(lvl, file, line, func, &msg);
+    }
+
+    fn flush(&self) {
+        let _ = self.file.lock();
+    }
+}
+
+/// 初始化日志器，注册为 log crate 的全局日志处理器
+pub fn init_logger() {
+    // 触发 Lazy 初始化 LOGGER
+    Lazy::force(&LOGGER);
+    // 注册为 log crate 全局日志器
+    if let Err(e) = log::set_logger(&*LOGGER) {
+        eprintln!("[mytodos-log] 注册全局日志器失败: {}", e);
+    }
+    log::set_max_level(log::LevelFilter::Debug);
 }

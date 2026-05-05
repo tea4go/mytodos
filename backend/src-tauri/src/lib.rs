@@ -21,10 +21,13 @@ fn init_android_logger() {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // 必须在最前面初始化日志器，确保后续所有 log! 都路由到 LOGGER
+    log_helper::init_logger();
+
     #[cfg(target_os = "android")]
     init_android_logger();
 
-    log::info!("mytodos lib loaded, about to start tauri...");
+    log::info!("mytodos: lib loaded, starting tauri...");
 
     // 在 tauri 启动前打印设备信息，确认代码能执行到这里
     #[cfg(target_os = "android")]

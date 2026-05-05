@@ -1,5 +1,5 @@
 use crate::config::AppConfig;
-use crate::{log_error, log_info, log_warn};
+use crate::{log_error, log_info};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

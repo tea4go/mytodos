@@ -182,12 +182,12 @@ pub fn open_path(path: String) -> Result<(), String> {
         {
             Ok(_) => {
                 log_info!(TAG, "open_path 成功 (Windows)");
-                Ok(())
+                return Ok(());
             }
             Err(e) => {
                 let msg = format!("打开失败：{}", e);
                 log_error!(TAG, "open_path {}", msg);
-                Err(msg)
+                return Err(msg);
             }
         }
     }
@@ -196,12 +196,12 @@ pub fn open_path(path: String) -> Result<(), String> {
         match std::process::Command::new("open").arg(&path).spawn() {
             Ok(_) => {
                 log_info!(TAG, "open_path 成功 (macOS)");
-                Ok(())
+                return Ok(());
             }
             Err(e) => {
                 let msg = format!("打开失败：{}", e);
                 log_error!(TAG, "open_path {}", msg);
-                Err(msg)
+                return Err(msg);
             }
         }
     }
@@ -210,12 +210,12 @@ pub fn open_path(path: String) -> Result<(), String> {
         match std::process::Command::new("xdg-open").arg(&path).spawn() {
             Ok(_) => {
                 log_info!(TAG, "open_path 成功 (Linux)");
-                Ok(())
+                return Ok(());
             }
             Err(e) => {
                 let msg = format!("打开失败：{}", e);
                 log_error!(TAG, "open_path {}", msg);
-                Err(msg)
+                return Err(msg);
             }
         }
     }
