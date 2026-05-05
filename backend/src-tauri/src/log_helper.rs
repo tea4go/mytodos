@@ -3,17 +3,26 @@
 //! 参考 log4go (beego/logs) 设计，提供：
 //! - 9 级日志（Emergency=0 .. Debug=7, Print=8）
 //! - 文件输出 + 控制台输出（带 ANSI 颜色）
+//! - TCP 远程日志服务器输出（类似 log4go connWriter，含 {LogName} + {HeartBeat}）
 //! - 文件按天滚动 + 日志保留天数
 //! - 格式化：`[PID] HH:MM:SS 文件名:行号(函数) [LEVEL]> 消息`
 //! - Tauri 命令 `log_frontend` 供前端调用写日志
 //! - Rust 宏 `log_error!` / `log_warn!` / ... 统一出口
+//!
+//! 远程日志服务器配置方式（优先级：CLI > 环境变量 > 不启用）：
+//!   1. 命令行参数：mytodos.exe --log-server=127.0.0.1:9514
+//!   2. 环境变量：set LOG_SERVER=127.0.0.1:9514
 
 use chrono::Local;
 use once_cell::sync::Lazy;
 use std::fs::{self, OpenOptions};
-use std::io::Write;
+use std::io::{Write, BufReader, BufRead};
+use std::net::{TcpStream, ToSocketAddrs};
 use std::path::PathBuf;
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::thread;
+use std::time::Duration;
 
 // ====== 日志级别（与 log4go 一致） ======
 pub const LEVEL_EMERGENCY: u8 = 0;
@@ -47,29 +56,130 @@ const LEVEL_COLORS: [&str; 9] = [
     "1;37",    // Print      高亮白
 ];
 
+// ====== CLI 参数解析（--log-server=xxx） ======
+/// 获取远程日志服务器地址（如果有配置）
+fn resolve_log_server() -> Option<String> {
+    // 1. 优先检查环境变量
+    if let Ok(val) = std::env::var("LOG_SERVER") {
+        let val = val.trim().to_string();
+        if !val.is_empty() {
+            return Some(val);
+        }
+    }
+    if let Ok(val) = std::env::var("log_server") {
+        let val = val.trim().to_string();
+        if !val.is_empty() {
+            return Some(val);
+        }
+    }
+
+    // 2. 检查 CLI 参数 --log-server=xxx
+    for arg in std::env::args() {
+        if let Some(val) = arg.strip_prefix("--log-server=") {
+            let val = val.trim().to_string();
+            if !val.is_empty() {
+                return Some(val);
+            }
+        }
+        if let Some(val) = arg.strip_prefix("--log_server=") {
+            let val = val.trim().to_string();
+            if !val.is_empty() {
+                return Some(val);
+            }
+        }
+    }
+
+    None
+}
+
 // ====== 全局日志器 ======
 pub static LOGGER: Lazy<Logger> = Lazy::new(|| {
     let log_dir = get_log_dir();
     let _ = fs::create_dir_all(&log_dir);
-    Logger::new(log_dir.join("mytodos.log"), LEVEL_DEBUG)
+    let mut logger = Logger::new(log_dir.join("mytodos.log"), LEVEL_DEBUG);
+
+    // 如果配置了远程日志服务器，添加 ConnWriter
+    if let Some(addr) = resolve_log_server() {
+        eprintln!("[mytodos-log] 远程日志服务器：{}", addr);
+        match ConnWriter::connect(&addr) {
+            Ok(cw) => {
+                logger.conn = Mutex::new(Some(cw));
+                eprintln!("[mytodos-log] 已连接日志服务器: {}", addr);
+            }
+            Err(e) => {
+                eprintln!("[mytodos-log] 连接日志服务器失败: {} (程序继续运行)", e);
+            }
+        }
+    }
+
+    logger
 });
 
 fn get_log_dir() -> PathBuf {
     #[cfg(target_os = "android")]
     {
-        // Android: 写入公共下载目录下的 logs 子目录
         return PathBuf::from("/storage/emulated/0/Download/mytodos-logs");
     }
-    // 桌面端：应用数据目录
     if let Ok(p) = std::env::var("APPDATA") {
-        // Windows: C:\Users\<user>\AppData\Roaming\mytodos\logs
         return PathBuf::from(p).join("mytodos").join("logs");
     }
     if let Ok(p) = std::env::var("HOME") {
         return PathBuf::from(p).join(".mytodos").join("logs");
     }
-    // 兜底：当前目录下 logs
     PathBuf::from("logs")
+}
+
+// ====== TCP 远程日志写入器（ConnWriter，参考 log4go conn.go） ======
+// 心跳线程标志
+static HEARTBEAT_RUNNING: AtomicBool = AtomicBool::new(false);
+
+pub struct ConnWriter {
+    stream: TcpStream,
+}
+
+impl ConnWriter {
+    /// 连接远程日志服务器，发送 {LogName} 握手包
+    fn connect(addr: &str) -> std::io::Result<Self> {
+        let addr2 = addr
+            .to_socket_addrs()
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidInput, e))?
+            .next()
+            .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidInput, "地址解析为空"))?;
+
+        let stream = TcpStream::connect_timeout(&addr2, Duration::from_secs(5))?;
+        stream.set_write_timeout(Some(Duration::from_secs(3)))?;
+        stream.set_nodelay(true)?;
+
+        // 发送 {LogName} 握手包（与 log4go connWriter.connect 一致）
+        let mut s = stream.try_clone()?;
+        s.write_all(b"{LogName}mytodos{LogName}\n")?;
+        s.flush()?;
+
+        // 启动心跳线程（每 5 秒发送 {HeartBeat}）
+        if !HEARTBEAT_RUNNING.swap(true, Ordering::SeqCst) {
+            thread::spawn(move || {
+                let mut hb = s;
+                loop {
+                    thread::sleep(Duration::from_secs(5));
+                    if hb.write_all(b"{HeartBeat}\n").is_err() {
+                        break;
+                    }
+                    let _ = hb.flush();
+                }
+            });
+        }
+
+        Ok(Self { stream })
+    }
+}
+
+impl LogWriter for ConnWriter {
+    fn write(&mut self, msg: &str) -> std::io::Result<()> {
+        // TCP 输出格式（不带 ANSI 颜色，与 log4go connWriter 一致）
+        self.stream.write_all(msg.as_bytes())?;
+        self.stream.flush()?;
+        Ok(())
+    }
 }
 
 // ====== 日志写入器特征 ======
@@ -92,9 +202,7 @@ impl ConsoleWriter {
 impl LogWriter for ConsoleWriter {
     fn write(&mut self, msg: &str) -> std::io::Result<()> {
         if self.color {
-            // 用 ANSI 颜色包裹消息
             let stripped = msg.strip_suffix('\n').unwrap_or(msg);
-            // 提取最后一级别前缀以确定颜色
             let color_idx = LEVEL_PREFIX
                 .iter()
                 .position(|p| msg.contains(p))
@@ -110,7 +218,7 @@ impl LogWriter for ConsoleWriter {
 
 // ====== 文件写入器（按天滚动，保留 7 天） ======
 struct FileWriter {
-    file: File,
+    file: std::fs::File,
     path: PathBuf,
     log_dir: PathBuf,
     max_days: i64,
@@ -140,22 +248,14 @@ impl FileWriter {
         let today = Local::now().format("%Y%m%d").to_string();
         let today_num: u32 = today.parse().unwrap_or(0);
         if today_num != self.today {
-            // 日期变了，归档旧文件
-            let old_path = self.path.with_extension(format!(
-                "{}.log",
-                self.today
-            ));
-            // 关闭旧文件
+            let old_path = self.path.with_extension(format!("{}.log", self.today));
             let _ = self.file.flush();
-            // 重命名当前日志到归档文件
             let _ = fs::rename(&self.path, &old_path);
-            // 打开新文件
             self.file = OpenOptions::new()
                 .create(true)
                 .append(true)
                 .open(&self.path)?;
             self.today = today_num;
-            // 清理超出保留天数的旧日志
             self.cleanup_old_logs();
         }
         Ok(())
@@ -196,47 +296,59 @@ impl LogWriter for FileWriter {
 pub struct Logger {
     console: Mutex<ConsoleWriter>,
     file: Mutex<FileWriter>,
+    conn: Mutex<Option<ConnWriter>>,
 }
 
 impl Logger {
     fn new(log_path: PathBuf, level: u8) -> Self {
         let fw = FileWriter::new(log_path, 7).unwrap_or_else(|e| {
-            // 如果文件打开失败，直接 panic（日志不可用应尽早暴露）
             panic!("无法初始化日志文件：{}", e);
         });
         Self {
             console: Mutex::new(ConsoleWriter::new(level, true)),
             file: Mutex::new(fw),
+            conn: Mutex::new(None),
         }
     }
 
-    /// 写日志（两个输出：控制台 + 文件）
+    /// 写日志（三个输出：控制台 + 文件 + TCP 远程服务器）
     pub fn write(&self, level: u8, file: &str, line: u32, func: &str, msg: &str) {
         let level = level.min(LEVEL_DEBUG);
         let now = Local::now();
         let time_str = now.format("%H:%M:%S").to_string();
         let pid = std::process::id();
         let prefix = LEVEL_PREFIX[level as usize];
-        let level_name = LEVEL_NAMES[level as usize];
 
         // 格式：`[PID] HH:MM:SS 文件名:行号(函数) [LEVEL]> 消息`
-        let log_line = format!(
+        // TCP 格式（与 log4go connWriter 一致，不含 PID）：`HH:MM:SS (文件名:行号) [LEVEL]> 消息`
+        let log_line_fmt = format!(
             "[{}] {} {}:{}({}) {}> {}\n",
             pid, time_str, file, line, func, prefix, msg
+        );
+        let tcp_line = format!(
+            "{} ({}:{}) {}> {}\n",
+            time_str, file, line, prefix, msg
         );
 
         // 写文件
         if let Ok(mut f) = self.file.lock() {
-            let _ = f.write(&log_line);
+            let _ = f.write(&log_line_fmt);
         }
 
         // 写控制台（带颜色）
         if let Ok(mut c) = self.console.lock() {
-            let _ = c.write(&log_line);
+            let _ = c.write(&log_line_fmt);
+        }
+
+        // 写 TCP 远程日志服务器（无颜色，log4go 格式）
+        if let Ok(mut c) = self.conn.lock() {
+            if let Some(ref mut conn) = *c {
+                let _ = conn.write(&tcp_line);
+            }
         }
     }
 
-    /// 写日志 — 无调用位置信息（供前端调用时使用，函数名传 "frontend"）
+    /// 写日志 — 无调用位置信息（供前端调用时使用）
     pub fn write_simple(&self, level: u8, msg: &str) {
         let level = level.min(LEVEL_DEBUG);
         let now = Local::now();
@@ -248,6 +360,10 @@ impl Logger {
             "[{}] {} (frontend) {}> {}\n",
             pid, time_str, prefix, msg
         );
+        let tcp_line = format!(
+            "{} (frontend) {}> {}\n",
+            time_str, prefix, msg
+        );
 
         if let Ok(mut f) = self.file.lock() {
             let _ = f.write(&log_line);
@@ -255,14 +371,15 @@ impl Logger {
         if let Ok(mut c) = self.console.lock() {
             let _ = c.write(&log_line);
         }
+        if let Ok(mut c) = self.conn.lock() {
+            if let Some(ref mut conn) = *c {
+                let _ = conn.write(&tcp_line);
+            }
+        }
     }
 }
 
 // ====== Rust 侧宏 ======
-// 使用方式：
-//   log_error!("gist_get", "网络请求失败: {}", err);
-//   或：
-//   log_error!("gist_get", |e| format!("网络请求失败: {}", e));
 #[macro_export]
 macro_rules! log_emergency {
     ($tag:expr, $($arg:tt)*) => {
@@ -352,7 +469,6 @@ macro_rules! log_debug {
 }
 
 /// Tauri 命令：供前端调用写入日志
-/// 前端传 `level`（0-8）和 `message`
 #[tauri::command]
 pub async fn log_frontend(level: u8, message: String) -> Result<(), String> {
     let level = level.min(LEVEL_DEBUG);
