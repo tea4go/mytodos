@@ -48,13 +48,14 @@
 | 安全存储 | Tauri Plugin (keyring/secure-store) | PAT、成员密码、workspaceKey |
 | 构建 | Vite | 前端打包 |
 
-### 2.3 Android 兼容性补丁
+### 2.3 Android 兼容性说明
 
-Tauri 依赖的 `tao` 和 `wry` 库在 Android 端使用 JNI 调用 `Activity.getId()` 获取活动 ID，但该方法从 API 28（Android 9）才可用。为兼容 Android 7.0~8.1（API 24~27），通过 Cargo `[patch.crates-io]` 机制引用本地补丁：
+Tauri 依赖的 `tao` 和 `wry` 库在 Android 端使用 JNI 调用 `Activity.getId()` 获取活动 ID，但该方法从 API 28（Android 9）才可用。如需兼容 Android 7.0~8.1（API 24~27），可参考以下方法之一：
 
-- `patches/tao-0.35.0/`：修补 `ndk_glue.rs`，将 `getId()` 调用改为 match 分支，失败时清除 JNI 异常并回退到 `hashCode()`。
-- `patches/wry-0.55.0/`：修补 `android/mod.rs`，应用相同的回退逻辑。
-- Android 日志：使用 `android_logger` + `log` crate 将 Rust 日志输出到 logcat，`lib.rs` 中设置 panic hook 捕获崩溃信息。
+- **方案 A（推荐）**：将 `minSdkVersion` 设为 28，放弃 Android 8.1 以下支持，无需任何补丁。
+- **方案 B（如确需兼容）**：fork `tao` 和 `wry`，在 `ndk_glue.rs` / `android/mod.rs` 中将 `getId()` 改为 match 分支，失败时清除 JNI 异常并回退到 `hashCode()`，然后通过 Cargo `[patch.crates-io]` 引用本地副本。当前项目默认不包含此补丁。
+
+Android 日志：使用 `android_logger` + `log` crate 将 Rust 日志输出到 logcat，`lib.rs` 中设置 panic hook 捕获崩溃信息。
 
 ### 2.4 Android 真机调试与日志规范
 

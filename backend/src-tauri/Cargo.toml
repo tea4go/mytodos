@@ -26,7 +26,4 @@ tauri-build = { version = "2", features = [] }
 default = ["custom-protocol"]
 custom-protocol = ["tauri/custom-protocol"]
 
-[patch.crates-io]
-tao = { path = "../../patches/tao-0.35.0" }
-wry = { path = "../../patches/wry-0.55.0" }
 
