@@ -522,7 +522,7 @@ impl log::Log for Logger {
     }
 
     fn flush(&self) {
-        let _ = self.file.lock();
+        let _unused = self.file.lock();
     }
 }
 

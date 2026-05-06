@@ -1,5 +1,8 @@
 import { fetchGist, updateGist } from './api'
 import type { GlobalConfig, GistResponse, ReleaseInfo } from '../types'
+import * as logHelper from './log_helper'
+
+const TAG = 'global'
 
 /** 编译期注入的全局配置 gistId，缺失时抛错。 */
 export const GLOBAL_GIST_ID = (import.meta.env.VITE_GLOBAL_GIST_ID ?? '').trim()

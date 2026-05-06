@@ -1,5 +1,0 @@
-fix: route log crate to LOGGER, fix release.rs compile error  
-  
-- Implement log::Log for Logger so log::info! etc go to file+console+TCP  
-- Add init_logger() called in lib.rs before any log! calls  
-- Fix open_path cfg blocks to use return Ok/Err  
