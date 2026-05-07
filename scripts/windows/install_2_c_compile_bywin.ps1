@@ -3,9 +3,19 @@
   在 Windows 上检测并安装 C/C++ 编译环境（MSVC 或 MSYS2/MinGW-w64 GNU 工具链）。
 .DESCRIPTION
   - 先检测是否已存在 MSVC cl.exe 或 GNU gcc.exe
-  - 若都不存在，提供菜单选择安装 MSVC 或 GNU（MSYS2 + mingw-w64）
+  - 若都不存在，提供菜单选择安装 MSVC 或 GNU（MSYS2 + mingw-w64）；可用 -Install 直接指定
   - 会尽量配置国内镜像源以加速 MSYS2 pacman 下载
+.PARAMETER Install
+  直接指定要安装的工具链，跳过交互菜单。可选值：msvc / gnu。
+.EXAMPLE
+  .\install_2_c_compile_bywin.ps1 -Install msvc
+.EXAMPLE
+  .\install_2_c_compile_bywin.ps1 -Install gnu
 #>
+param(
+  [ValidateSet('msvc', 'gnu')]
+  [string]$Install
+)
 
 $ErrorActionPreference = 'Stop'
 $Failed = $false
@@ -308,10 +318,15 @@ Write-Host ""
 Write-Host "[2/2] 选择安装方式" -ForegroundColor Cyan
 Write-Host ""
 
-$selected = Select-MenuOption -Prompt '请选择要安装的编译工具链：' -Options @(
-  'MSVC (Visual Studio Build Tools)',
-  'GNU (MinGW-w64 / MSYS2)'
-)
+if ($Install) {
+  $selected = switch ($Install) { 'msvc' { 1 } 'gnu' { 2 } }
+  Write-Host ("  已通过 -Install 参数选择：{0}" -f $Install) -ForegroundColor Cyan
+} else {
+  $selected = Select-MenuOption -Prompt '请选择要安装的编译工具链：' -Options @(
+    'MSVC (Visual Studio Build Tools)',
+    'GNU (MinGW-w64 / MSYS2)'
+  )
+}
 
 switch ($selected) {
   1 {
