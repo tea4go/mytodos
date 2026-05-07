@@ -1,3 +1,4 @@
+#!/usr/bin/env powershell
 <#
 .SYNOPSIS
   在 Windows 上检测并安装 C/C++ 编译环境（MSVC 或 MSYS2/MinGW-w64 GNU 工具链）。
@@ -81,6 +82,50 @@ function Set-Msys2ChinaMirror {
 
 <#
 .SYNOPSIS
+  等待 pacman 数据库锁释放，或清理残留锁文件。
+.OUTPUTS
+  [bool] 锁已处理返回 $true。
+.NOTES
+  - 如果有 pacman 进程在运行，最多等待 120 秒
+  - 如果没有 pacman 进程但锁文件存在，视为残留锁并删除
+#>
+function Wait-PacmanLock {
+  $lockFile = Join-Path $MsysRoot 'var\lib\pacman\db.lck'
+  if (-not (Test-Path -LiteralPath $lockFile)) { return $true }
+
+  # 检查是否有 pacman 进程在运行
+  $pacmanRunning = $false
+  try {
+    $procs = Get-Process -Name 'pacman' -ErrorAction SilentlyContinue
+    $pacmanRunning = ($null -ne $procs) -and ($procs.Count -gt 0)
+  } catch {}
+
+  if (-not $pacmanRunning) {
+    # 没有 pacman 进程但锁存在，删除残留锁
+    Write-Warn "检测到 pacman 残留锁文件，正在清理..."
+    Remove-Item -LiteralPath $lockFile -Force -ErrorAction SilentlyContinue
+    return $true
+  }
+
+  # 有 pacman 在运行，等待锁释放
+  $maxWait = 120
+  $waited = 0
+  Write-Host "  pacman 正在被其他进程使用，等待中..." -ForegroundColor Yellow
+  while ((Test-Path -LiteralPath $lockFile) -and ($waited -lt $maxWait)) {
+    Start-Sleep -Seconds 5
+    $waited += 5
+    Write-Host "  已等待 ${waited}s/${maxWait}s..." -ForegroundColor Yellow
+  }
+
+  if (Test-Path -LiteralPath $lockFile) {
+    Write-Warn "pacman 锁定超过 ${maxWait}s，尝试强制清理锁文件..."
+    Remove-Item -LiteralPath $lockFile -Force -ErrorAction SilentlyContinue
+  }
+  return $true
+}
+
+<#
+.SYNOPSIS
   安装/补齐 GNU 汇编器 as.exe（通过 MSYS2 pacman 安装 binutils）。
 .OUTPUTS
   [bool]
@@ -96,6 +141,7 @@ function Install-GnuAssembler {
   }
   if (-not (Confirm-Install "通过 MSYS2 pacman 安装 mingw-w64-x86_64-binutils")) { return $false }
   Set-Msys2ChinaMirror | Out-Null
+  Wait-PacmanLock | Out-Null
   Invoke-NativeStream -Block { & $MsysBash -lc "pacman -S --noconfirm --needed mingw-w64-x86_64-binutils" }
   if (Test-Path -LiteralPath $MingwAsExe) {
     Add-PathPrefix $MingwBin
@@ -186,6 +232,7 @@ function Confirm-MingwGccReady {
 function Install-MsysGcc {
   if (-not (Confirm-Install "通过 MSYS2 pacman 安装 mingw-w64-x86_64-gcc")) { return $false }
   Set-Msys2ChinaMirror | Out-Null
+  Wait-PacmanLock | Out-Null
   Invoke-NativeStream -Block { & $MsysBash -lc "pacman -S --noconfirm --needed mingw-w64-x86_64-gcc mingw-w64-x86_64-binutils" }
   if (Test-Path -LiteralPath $MingwGccExe) {
     return (Confirm-MingwGccReady -SuccessMessage "mingw-w64-x86_64-gcc 安装成功")
@@ -257,6 +304,7 @@ function Install-Gnu {
 
     if (Test-Path -LiteralPath $MsysRoot) {
       Set-Msys2ChinaMirror | Out-Null
+      Wait-PacmanLock | Out-Null
       Invoke-NativeStream -Block { & $MsysBash -lc "pacman-key --init && pacman-key --populate msys2 && pacman -Sy --noconfirm archlinux-msys2-keyring && pacman -Su --noconfirm && pacman -S --noconfirm --needed mingw-w64-x86_64-gcc mingw-w64-x86_64-binutils" }
       if (Test-Path -LiteralPath $MingwGccExe) {
         return (Confirm-MingwGccReady -SuccessMessage "MSYS2 + mingw-w64-gcc 安装成功")
