@@ -44,37 +44,39 @@ function Set-Msys2ChinaMirror {
   $d = Join-Path $MsysRoot 'etc\pacman.d'
   if (-not (Test-Path -LiteralPath $d)) { return $true }
 
-  #$marker = Join-Path $d '.china_mirrors_added'
-  #if (Test-Path -LiteralPath $marker) { return $true }
+  Write-Host "  配置 MSYS2 国内镜像源（清华 TUNA / 中科大 USTC）..." -ForegroundColor Cyan
 
-  Write-Host "  配置 MSYS2 国内镜像源（清华 TUNA）..." -ForegroundColor Cyan
-  $map = @(
-    @{ File = 'mirrorlist.mingw'; Line = 'Server = https://mirrors.tuna.tsinghua.edu.cn/msys2/mingw/$repo/' },
-    @{ File = 'mirrorlist.msys'; Line = 'Server = https://mirrors.tuna.tsinghua.edu.cn/msys2/msys/$arch/' }
-  )
-  # 逐个处理 MSYS2 的各类 mirrorlist 文件：
-  # - 若文件存在且尚未包含 TUNA 镜像，则把 TUNA Server 行插到文件最前面（提升下载速度/可用性）
-  # - 同时过滤掉默认的 mirror.msys2.org 条目，避免它排在前面导致慢/不通
-  foreach ($item in $map) {
-    $file = Join-Path $d $item.File
-    if (-not (Test-Path -LiteralPath $file)) { continue }
-
-    Write-Host "    处理 $file" -ForegroundColor Cyan
-    $content = Get-Content -LiteralPath $file -ErrorAction SilentlyContinue
-    # 去掉官方默认源（mirror.msys2.org），用 :// 精确匹配域名避免误杀其他镜像
-    $filtered = $content | Where-Object { $_ -notmatch '://mirror\.msys2\.org/' }
-    $hasTuna = $filtered -and ($filtered | Where-Object { $_ -eq $item.Line })
-    if ($hasTuna) {
-      # TUNA 已存在，检查是否还有官方源被过滤掉
-      if (@($content).Count -eq @($filtered).Count) { continue }
-      # 有官方源残留，写回清理后的版本（不再重复添加 TUNA）
-      $filtered | Set-Content -LiteralPath $file -Encoding ASCII
-    } else {
-      @($item.Line) + $filtered | Set-Content -LiteralPath $file -Encoding ASCII
-    }
+  # 国内镜像 Server 行（置顶到文件最前面）
+  $mirrors = @{
+    'mirrorlist.mingw' = @(
+      'Server = https://mirrors.tuna.tsinghua.edu.cn/msys2/mingw/$repo/'
+      'Server = https://mirrors.ustc.edu.cn/msys2/mingw/$repo/'
+    )
+    'mirrorlist.msys' = @(
+      'Server = https://mirrors.tuna.tsinghua.edu.cn/msys2/msys/$arch/'
+      'Server = https://mirrors.ustc.edu.cn/msys2/msys/$arch/'
+    )
   }
 
-  #New-Item -ItemType File -Force -Path $marker | Out-Null
+  foreach ($fileName in $mirrors.Keys) {
+    $file = Join-Path $d $fileName
+    if (-not (Test-Path -LiteralPath $file)) { continue }
+
+    Write-Host "    处理 $fileName" -ForegroundColor Cyan
+    $content = Get-Content -LiteralPath $file -ErrorAction SilentlyContinue
+
+    # 过滤掉官方源（repo.msys2.org / mirror.msys2.org）以及已有的国内镜像行，
+    # 避免重复；注释行和其他镜像行保留
+    $filtered = $content | Where-Object {
+      $_ -notmatch '://(mirror|repo)\.msys2\.org/' -and
+      $_ -notmatch '://mirrors\.tuna\.tsinghua\.edu\.cn/' -and
+      $_ -notmatch '://mirrors\.ustc\.edu\.cn/'
+    }
+
+    # 国内镜像置顶，其余行跟在后面
+    $newContent = $mirrors[$fileName] + $filtered
+    $newContent | Set-Content -LiteralPath $file -Encoding ASCII
+  }
 
   Write-Ok "MSYS2 国内镜像源已配置"
   return $true
@@ -126,6 +128,29 @@ function Wait-PacmanLock {
 
 <#
 .SYNOPSIS
+  更新 MSYS2 pacman 密钥环，防止 PGP 签名验证失败导致安装中断。
+.OUTPUTS
+  [bool]
+.NOTES
+  MSYS2 密钥会定期过期，安装前更新密钥环可避免 "invalid PGP signature" 错误。
+#>
+function Update-Msys2Keyring {
+  if (-not (Test-Path -LiteralPath $MsysBash)) { return $false }
+
+  Write-Host "  更新 MSYS2 密钥环..." -ForegroundColor Cyan
+  try {
+    Invoke-NativeStream -Block { & $MsysBash -lc "pacman-key --init && pacman-key --populate msys2"
+    }
+    Write-Ok "MSYS2 密钥环已更新"
+    return $true
+  } catch {
+    Write-Warn "密钥环更新可能失败，尝试继续安装..."
+    return $false
+  }
+}
+
+<#
+.SYNOPSIS
   安装/补齐 GNU 汇编器 as.exe（通过 MSYS2 pacman 安装 binutils）。
 .OUTPUTS
   [bool]
@@ -141,6 +166,7 @@ function Install-GnuAssembler {
   }
   if (-not (Confirm-Install "通过 MSYS2 pacman 安装 mingw-w64-x86_64-binutils")) { return $false }
   Set-Msys2ChinaMirror | Out-Null
+  Update-Msys2Keyring | Out-Null
   Wait-PacmanLock | Out-Null
   Invoke-NativeStream -Block { & $MsysBash -lc "pacman -S --noconfirm --needed mingw-w64-x86_64-binutils" }
   if (Test-Path -LiteralPath $MingwAsExe) {
@@ -232,6 +258,7 @@ function Confirm-MingwGccReady {
 function Install-MsysGcc {
   if (-not (Confirm-Install "通过 MSYS2 pacman 安装 mingw-w64-x86_64-gcc")) { return $false }
   Set-Msys2ChinaMirror | Out-Null
+  Update-Msys2Keyring | Out-Null
   Wait-PacmanLock | Out-Null
   Invoke-NativeStream -Block { & $MsysBash -lc "pacman -S --noconfirm --needed mingw-w64-x86_64-gcc mingw-w64-x86_64-binutils" }
   if (Test-Path -LiteralPath $MingwGccExe) {
